@@ -1,0 +1,580 @@
+{% extends 'app/base.html' %}
+{% block title %}Vitals Forecast{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --glucose-color: #f97316;
+        --hr-color: #3b82f6;
+        --card-radius: 16px;
+        --glow-glu: 0 0 20px rgba(249, 115, 22, 0.25);
+        --glow-hr:  0 0 20px rgba(59, 130, 246, 0.25);
+    }
+
+    /* ── Page header ── */
+    .vitals-header {
+        background: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 60%, #ec4899 100%);
+        color: white;
+        border-radius: var(--card-radius);
+        padding: 28px 32px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+    }
+    .vitals-header::before {
+        content: '';
+        position: absolute;
+        top: -40px; right: -40px;
+        width: 160px; height: 160px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 50%;
+    }
+    .vitals-header h2 { font-size: 1.9rem; font-weight: 700; margin-bottom: 6px; }
+    .vitals-header p  { opacity: .8; margin: 0; font-size: .95rem; }
+
+    /* Patient ID badge */
+    .pid-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.35);
+        border-radius: 50px;
+        padding: 6px 18px;
+        font-size: .9rem; font-weight: 600;
+        margin-top: 12px;
+        backdrop-filter: blur(6px);
+    }
+    .pid-badge.unlinked { background: rgba(239,68,68,0.3); border-color: rgba(239,68,68,0.5); }
+
+    /* ── Log form card ── */
+    .log-card {
+        background: white;
+        border-radius: var(--card-radius);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+    .log-card .section-title {
+        font-size: 1.1rem; font-weight: 700; color: #1e293b;
+        margin-bottom: 20px;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .log-card .section-title i { color: #8b5cf6; }
+
+    .vitals-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 576px) { .vitals-inputs { grid-template-columns: 1fr; } }
+
+    .input-wrapper label {
+        font-size: .82rem; font-weight: 600; color: #64748b;
+        text-transform: uppercase; letter-spacing: .05em;
+        margin-bottom: 6px; display: block;
+    }
+    .input-unit-wrap {
+        position: relative;
+    }
+    .input-unit-wrap input {
+        width: 100%;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px 56px 12px 16px;
+        font-size: 1.1rem; font-weight: 600;
+        color: #1e293b;
+        outline: none;
+        transition: border-color .2s, box-shadow .2s;
+        background: #f8fafc;
+    }
+    .input-unit-wrap input:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+        background: white;
+    }
+    .input-unit {
+        position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+        font-size: .78rem; font-weight: 700; color: #94a3b8;
+        pointer-events: none;
+    }
+
+    /* glucose tint */
+    .input-glucose .input-unit-wrap input:focus { border-color: var(--glucose-color); box-shadow: 0 0 0 3px rgba(249,115,22,0.15); }
+    /* heart-rate tint */
+    .input-hr .input-unit-wrap input:focus { border-color: var(--hr-color); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+
+    .btn-predict {
+        width: 100%; margin-top: 20px;
+        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+        color: white; border: none; border-radius: 12px;
+        padding: 14px 24px; font-size: 1rem; font-weight: 700;
+        cursor: pointer; transition: all .3s ease;
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-predict:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(139,92,246,0.4); }
+    .btn-predict:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+
+    /* ── Current stat cards ── */
+    .stat-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 480px) { .stat-cards { grid-template-columns: 1fr; } }
+
+    .stat-card {
+        border-radius: var(--card-radius);
+        padding: 22px 24px;
+        display: flex; align-items: center; gap: 16px;
+        transition: transform .3s, box-shadow .3s;
+    }
+    .stat-card:hover { transform: translateY(-3px); }
+
+    .stat-card.glucose-card { background: linear-gradient(135deg, #fff7ed, #fed7aa); box-shadow: var(--glow-glu); border: 1px solid #fdba74; }
+    .stat-card.hr-card     { background: linear-gradient(135deg, #eff6ff, #bfdbfe); box-shadow: var(--glow-hr);  border: 1px solid #93c5fd; }
+
+    .stat-icon {
+        width: 52px; height: 52px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; flex-shrink: 0;
+    }
+    .glucose-card .stat-icon { background: var(--glucose-color); color: white; }
+    .hr-card .stat-icon      { background: var(--hr-color); color: white; }
+
+    .stat-info .label { font-size: .78rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-info .value { font-size: 1.8rem; font-weight: 800; line-height: 1.1; margin: 2px 0; }
+    .stat-info .unit  { font-size: .78rem; color: #94a3b8; font-weight: 500; }
+
+    .glucose-card .stat-info .value { color: #c2410c; }
+    .hr-card .stat-info .value      { color: #1d4ed8; }
+
+    /* ── Chart section ── */
+    .chart-card {
+        background: white;
+        border-radius: var(--card-radius);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.07);
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+    .chart-card .section-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+    .chart-card .section-title i { color: #0ea5e9; }
+    .chart-subtitle { font-size: .82rem; color: #94a3b8; margin-bottom: 20px; }
+
+    .chart-legend-row { display: flex; gap: 24px; margin-bottom: 16px; }
+    .legend-item { display: flex; align-items: center; gap: 7px; font-size: .84rem; font-weight: 600; color: #475569; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+    #vitalsChart { max-height: 320px; }
+
+    /* placeholder empty state */
+    .chart-empty {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        height: 220px; color: #94a3b8; text-align: center;
+    }
+    .chart-empty i { font-size: 3rem; margin-bottom: 12px; opacity: .5; }
+    .chart-empty p { font-size: .9rem; margin: 0; }
+
+    /* ── Error/success toast area ── */
+    .alert-area { margin-bottom: 20px; }
+
+    /* ── History table ── */
+    .history-card {
+        background: white;
+        border-radius: var(--card-radius);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.07);
+        overflow: hidden;
+    }
+    .history-header {
+        padding: 20px 24px 0;
+        font-size: 1.05rem; font-weight: 700; color: #1e293b;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .history-header i { color: #10b981; }
+    .history-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .history-table thead th {
+        background: #f8fafc; padding: 10px 16px;
+        font-size: .78rem; font-weight: 700; color: #64748b;
+        text-transform: uppercase; letter-spacing: .04em;
+        border-bottom: 1px solid #e2e8f0; text-align: left;
+    }
+    .history-table tbody td {
+        padding: 12px 16px; border-bottom: 1px solid #f1f5f9;
+        font-size: .88rem; color: #334155; vertical-align: middle;
+    }
+    .history-table tbody tr:last-child td { border-bottom: none; }
+    .history-table tbody tr:hover td { background: #f8fafc; }
+
+    .pill {
+        display: inline-block; padding: 3px 12px;
+        border-radius: 50px; font-size: .78rem; font-weight: 600;
+    }
+    .pill-glucose { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
+    .pill-hr      { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
+
+    .empty-history { padding: 24px; text-align: center; color: #94a3b8; font-size: .88rem; }
+
+    /* ── Refresh button ── */
+    .btn-refresh {
+        background: linear-gradient(135deg, #0ea5e9, #6366f1);
+        color: white; border: none; border-radius: 10px;
+        padding: 9px 20px; font-size: .85rem; font-weight: 600;
+        cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+        transition: all .3s;
+    }
+    .btn-refresh:hover { box-shadow: 0 6px 18px rgba(14,165,233,.4); transform: translateY(-1px); }
+
+    /* ── Spinner overlay for chart ── */
+    .chart-spinner-wrap {
+        display: none; position: absolute; inset: 0;
+        background: rgba(255,255,255,.8); border-radius: var(--card-radius);
+        align-items: center; justify-content: center; z-index: 10;
+    }
+    .chart-spinner-wrap.show { display: flex; }
+    .chart-wrap { position: relative; }
+</style>
+
+<!-- ── HEADER ───────────────────────────────────────────── -->
+<div class="vitals-header">
+    <h2><i class="fas fa-brain me-2"></i>Vitals Forecast</h2>
+    <p>Log your current glucose & heart rate, then see your projected vitals for the next 60 minutes.</p>
+    {% if patient_id %}
+        <div class="pid-badge"><i class="fas fa-id-badge"></i> Patient ID: {{ patient_id }}</div>
+    {% else %}
+        <div class="pid-badge unlinked"><i class="fas fa-exclamation-triangle"></i> No Patient ID linked — contact admin</div>
+    {% endif %}
+</div>
+
+<!-- ── ALERTS ─────────────────────────────────────────────── -->
+<div class="alert-area" id="alertArea"></div>
+
+<div class="row g-4">
+    <!-- LEFT: Log form -->
+    <div class="col-lg-4">
+        <div class="log-card">
+            <div class="section-title"><i class="fas fa-pen-to-square"></i> Log Current Vitals</div>
+            <form id="vitalsForm">
+                {% csrf_token %}
+                <div class="vitals-inputs">
+                    <div class="input-wrapper input-glucose">
+                        <label for="glucoseInput"><i class="fas fa-droplet" style="color:var(--glucose-color)"></i> Blood Glucose</label>
+                        <div class="input-unit-wrap">
+                            <input type="number" id="glucoseInput" name="glucose"
+                                   min="40" max="600" step="0.1" placeholder="e.g. 140" required>
+                            <span class="input-unit">mg/dL</span>
+                        </div>
+                    </div>
+                    <div class="input-wrapper input-hr">
+                        <label for="hrInput"><i class="fas fa-heart" style="color:var(--hr-color)"></i> Heart Rate</label>
+                        <div class="input-unit-wrap">
+                            <input type="number" id="hrInput" name="heart_rate"
+                                   min="30" max="220" step="0.1" placeholder="e.g. 85" required>
+                            <span class="input-unit">bpm</span>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-predict" id="predictBtn">
+                    <i class="fas fa-wand-magic-sparkles"></i> Log & Predict
+                </button>
+            </form>
+        </div>
+
+        <!-- Recent history -->
+        <div class="history-card">
+            <div class="history-header"><i class="fas fa-clock-rotate-left"></i> Recent Logs</div>
+            {% if recent_logs %}
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Glucose</th>
+                        <th>Heart Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td style="font-size:.8rem; color:#94a3b8;">{{ log.logged_at|date:"M d, H:i" }}</td>
+                        <td><span class="pill pill-glucose">{{ log.glucose }} mg/dL</span></td>
+                        <td><span class="pill pill-hr">{{ log.heart_rate }} bpm</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-history" id="historyEmpty">
+                <i class="fas fa-clipboard-list" style="font-size:2rem; color:#cbd5e1;"></i>
+                <p style="margin-top:8px;">No vitals logged yet.<br>Use the form above to get started.</p>
+            </div>
+            <table class="history-table" id="historyTable" style="display:none;">
+                <thead>
+                    <tr><th>Time</th><th>Glucose</th><th>Heart Rate</th></tr>
+                </thead>
+                <tbody id="historyBody"></tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- RIGHT: Chart + stat cards -->
+    <div class="col-lg-8">
+        <!-- Stat mini cards -->
+        <div class="stat-cards" id="statCards" style="display:none;">
+            <div class="stat-card glucose-card">
+                <div class="stat-icon"><i class="fas fa-droplet"></i></div>
+                <div class="stat-info">
+                    <div class="label">Current Glucose</div>
+                    <div class="value" id="currentGlucose">—</div>
+                    <div class="unit">mg/dL</div>
+                </div>
+            </div>
+            <div class="stat-card hr-card">
+                <div class="stat-icon"><i class="fas fa-heartbeat"></i></div>
+                <div class="stat-info">
+                    <div class="label">Current Heart Rate</div>
+                    <div class="value" id="currentHR">—</div>
+                    <div class="unit">bpm</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart card -->
+        <div class="chart-card">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
+                <div>
+                    <div class="section-title" style="margin-bottom:4px;"><i class="fas fa-chart-line"></i> 60-Minute Vitals Projection</div>
+                    <div class="chart-subtitle">Predicted glucose (mg/dL) and heart rate (bpm) across the next 60 minutes</div>
+                </div>
+                <button class="btn-refresh" id="refreshBtn" style="display:none;" onclick="refreshPredictions()">
+                    <i class="fas fa-rotate"></i> Refresh Forecast
+                </button>
+            </div>
+
+            <div class="chart-legend-row" id="legendRow" style="display:none;">
+                <div class="legend-item"><div class="legend-dot" style="background:var(--glucose-color)"></div>Glucose (mg/dL)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--hr-color)"></div>Heart Rate (bpm)</div>
+            </div>
+
+            <div class="chart-wrap">
+                <div class="chart-spinner-wrap" id="chartSpinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+
+                <!-- Empty state (shown before first prediction) -->
+                <div class="chart-empty" id="chartEmpty">
+                    <i class="fas fa-chart-area"></i>
+                    <p>Log your vitals and click <strong>Log & Predict</strong><br>to see your 60-minute forecast here.</p>
+                </div>
+
+                <canvas id="vitalsChart" style="display:none;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    let chart = null;
+
+    // ── Helpers ──────────────────────────────────────────────────
+    function showAlert(msg, type='danger') {
+        const area = document.getElementById('alertArea');
+        const icon = type === 'success' ? 'check-circle' : (type === 'warning' ? 'exclamation-triangle' : 'exclamation-circle');
+        area.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+                <i class="fas fa-${icon}"></i>
+                <span>${msg}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+    }
+
+    function clearAlert() {
+        document.getElementById('alertArea').innerHTML = '';
+    }
+
+    function setLoading(on) {
+        const btn = document.getElementById('predictBtn');
+        btn.disabled = on;
+        btn.innerHTML = on
+            ? '<i class="fas fa-spinner fa-spin"></i> Predicting…'
+            : '<i class="fas fa-wand-magic-sparkles"></i> Log & Predict';
+        document.getElementById('chartSpinner').classList.toggle('show', on);
+    }
+
+    // ── Chart rendering ──────────────────────────────────────────
+    function renderChart(predictions) {
+        const labels   = predictions.map(p => `+${p.minutes_ahead} min`);
+        const glucoses = predictions.map(p => +p.predicted_glucose.toFixed(1));
+        const hrs      = predictions.map(p => +p.predicted_heart_rate.toFixed(1));
+
+        const canvas = document.getElementById('vitalsChart');
+        document.getElementById('chartEmpty').style.display = 'none';
+        canvas.style.display = 'block';
+        document.getElementById('legendRow').style.display = 'flex';
+        document.getElementById('refreshBtn').style.display = 'inline-flex';
+
+        if (chart) chart.destroy();
+
+        chart = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Glucose (mg/dL)',
+                        data: glucoses,
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249,115,22,0.12)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#f97316',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'yGlucose',
+                    },
+                    {
+                        label: 'Heart Rate (bpm)',
+                        data: hrs,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,0.08)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#3b82f6',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.4,
+                        fill: true,
+                        yAxisID: 'yHR',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: { duration: 900, easing: 'easeInOutQuart' },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15,23,42,0.92)',
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#e2e8f0',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: ctx => {
+                                const unit = ctx.datasetIndex === 0 ? ' mg/dL' : ' bpm';
+                                return `  ${ctx.dataset.label}: ${ctx.parsed.y}${unit}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        ticks: { font: { size: 11 }, color: '#64748b' }
+                    },
+                    yGlucose: {
+                        type: 'linear', position: 'left',
+                        grid: { color: 'rgba(249,115,22,0.08)' },
+                        ticks: { color: '#c2410c', font: { size: 11 }, callback: v => v + ' mg/dL' },
+                        title: { display: true, text: 'Glucose (mg/dL)', color: '#c2410c', font: { size: 11, weight: 600 } }
+                    },
+                    yHR: {
+                        type: 'linear', position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#1d4ed8', font: { size: 11 }, callback: v => v + ' bpm' },
+                        title: { display: true, text: 'Heart Rate (bpm)', color: '#1d4ed8', font: { size: 11, weight: 600 } }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── Update stat cards ─────────────────────────────────────────
+    function updateStatCards(glucose, hr) {
+        document.getElementById('statCards').style.display = 'grid';
+        document.getElementById('currentGlucose').textContent = glucose.toFixed(1);
+        document.getElementById('currentHR').textContent = hr.toFixed(1);
+    }
+
+    // ── Prepend row to history table ──────────────────────────────
+    function prependHistoryRow(glucose, hr) {
+        // hide empty, show table
+        const empty = document.getElementById('historyEmpty');
+        const table = document.getElementById('historyTable');
+        if (empty) empty.style.display = 'none';
+        if (table) table.style.display = 'table';
+
+        const body = document.getElementById('historyBody');
+        const now  = new Date();
+        const ts   = now.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
+        const row  = document.createElement('tr');
+        row.innerHTML = `
+            <td style="font-size:.8rem; color:#94a3b8;">${ts}</td>
+            <td><span class="pill pill-glucose">${(+glucose).toFixed(1)} mg/dL</span></td>
+            <td><span class="pill pill-hr">${(+hr).toFixed(1)} bpm</span></td>`;
+        body.insertBefore(row, body.firstChild);
+        // keep only 5 rows
+        while (body.children.length > 5) body.removeChild(body.lastChild);
+    }
+
+    // ── Form submit ───────────────────────────────────────────────
+    document.getElementById('vitalsForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        clearAlert();
+        setLoading(true);
+
+        const glucose    = parseFloat(document.getElementById('glucoseInput').value);
+        const heart_rate = parseFloat(document.getElementById('hrInput').value);
+
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', CSRF);
+        fd.append('glucose', glucose);
+        fd.append('heart_rate', heart_rate);
+
+        try {
+            const res  = await fetch('{% url "vitals_prediction" %}', { method: 'POST', body: fd });
+            const data = await res.json();
+
+            if (data.error && !data.predictions?.length) {
+                showAlert(data.error, 'warning');
+            } else {
+                if (data.error) showAlert(data.error, 'warning');
+                updateStatCards(data.glucose, data.heart_rate);
+                if (data.predictions?.length) {
+                    renderChart(data.predictions);
+                    showAlert('Forecast updated successfully!', 'success');
+                }
+                prependHistoryRow(data.glucose, data.heart_rate);
+                this.reset();
+            }
+        } catch (err) {
+            showAlert('Network error – could not reach the server. Please try again.', 'danger');
+        } finally {
+            setLoading(false);
+        }
+    });
+
+    // ── Refresh button ─────────────────────────────────────────────
+    window.refreshPredictions = async function() {
+        clearAlert();
+        const btn = document.getElementById('refreshBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing…';
+        document.getElementById('chartSpinner').classList.add('show');
+
+        try {
+            const res  = await fetch('{% url "get_vitals_predictions" %}');
+            const data = await res.json();
+            if (data.error) {
+                showAlert(data.error, 'warning');
+            } else if (data.predictions?.length) {
+                renderChart(data.predictions);
+                showAlert('Forecast refreshed!', 'success');
+            }
+        } catch (err) {
+            showAlert('Failed to refresh forecast.', 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rotate"></i> Refresh Forecast';
+            document.getElementById('chartSpinner').classList.remove('show');
+        }
+    };
+})();
+</script>
+{% endblock %}

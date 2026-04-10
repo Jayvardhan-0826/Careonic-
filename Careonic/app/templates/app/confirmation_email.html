@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        .email-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            text-align: center;
+        }
+        .email-header h3 {
+            color: white;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .email-body {
+            padding: 35px 30px;
+        }
+        .greeting {
+            color: #2d3748;
+            font-size: 16px;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        .details-card {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .details-card h4 {
+            color: #4a5568;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0 0 15px 0;
+            font-weight: 600;
+        }
+        .detail-item {
+            display: flex;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+            min-width: 120px;
+            font-size: 14px;
+        }
+        .detail-value {
+            color: #2d3748;
+            flex: 1;
+            font-size: 14px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 15px;
+            background: #48bb78;
+            color: white;
+        }
+        .email-footer {
+            background: #f8f9fa;
+            padding: 25px 30px;
+            text-align: center;
+            color: #718096;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <h3>✓ Appointment Confirmed</h3>
+        </div>
+        <div class="email-body">
+            <p class="greeting">Dear {{ user_name }},</p>
+            <p class="greeting">Your appointment has been successfully scheduled. Please find the details below:</p>
+            
+            <div class="details-card">
+                <h4>Appointment Details</h4>
+                <div class="detail-item">
+                    <span class="detail-label">Date & Time:</span>
+                    <span class="detail-value">{{ appointment.date_time }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Doctor:</span>
+                    <span class="detail-value">{{ appointment.doctor }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Reason:</span>
+                    <span class="detail-value">{{ appointment.reason }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Contact Info:</span>
+                    <span class="detail-value">{{ appointment.contact_info }}</span>
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <span class="status-badge">Status: {{ appointment.status }}</span>
+            </div>
+        </div>
+        <div class="email-footer">
+            <p>If you need to reschedule or cancel, please contact us as soon as possible.</p>
+            <p>Thank you for choosing our healthcare services.</p>
+        </div>
+    </div>
+</body>
+</html>

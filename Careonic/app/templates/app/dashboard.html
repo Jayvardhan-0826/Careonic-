@@ -1,0 +1,904 @@
+{% extends 'app/base.html' %}
+{% load app_filters %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --card-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        --border-radius: 15px;
+        --mobile-padding: 15px;
+        --desktop-padding: 25px;
+    }
+
+    /* Dashboard Header - Responsive */
+    .dashboard-header {
+        background: var(--primary-gradient);
+        color: white;
+        padding: var(--desktop-padding);
+        border-radius: var(--border-radius);
+        margin-bottom: 25px;
+        position: relative;
+        overflow: hidden;
+        text-align: center;
+    }
+
+    .dashboard-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -30%;
+        width: 100px;
+        height: 100px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(180deg); }
+    }
+
+    .dashboard-header h2 {
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .dashboard-header p {
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
+    /* Calendar Container - Responsive */
+    .calendar-container {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: var(--desktop-padding);
+        box-shadow: var(--card-shadow);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+        height: fit-content;
+    }
+
+    .calendar-header-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .calendar-header-info h4 {
+        font-size: 1.3rem;
+        margin: 0;
+        color: #007bff;
+    }
+
+    .calendar-instruction {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    /* Quick Actions Card - Responsive */
+    .quick-actions-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        margin-bottom: 20px;
+        height: fit-content;
+    }
+
+    .quick-actions-card .card-body {
+        padding: var(--desktop-padding);
+    }
+
+    /* Custom Calendar - Responsive & No Scroll */
+    .custom-calendar {
+        width: 100%;
+        font-family: inherit;
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f1f5f9;
+        gap: 15px;
+    }
+
+    .calendar-nav-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .calendar-nav-btn:hover {
+        background: #0056b3;
+        transform: scale(1.1);
+    }
+
+    .calendar-nav-btn:active {
+        transform: scale(0.95);
+    }
+
+    .calendar-month-year {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #007bff;
+        text-align: center;
+        flex: 1;
+        white-space: nowrap;
+    }
+
+    /* Calendar Grid - Perfect Fit, No Scroll */
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        margin-top: 15px;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .calendar-weekday {
+        text-align: center;
+        font-weight: 600;
+        color: #6b7280;
+        padding: 12px 8px;
+        font-size: 0.9rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 8px;
+    }
+
+    .calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        position: relative;
+        font-weight: 500;
+        min-height: 45px;
+        padding: 5px;
+        box-sizing: border-box;
+        font-size: 0.95rem;
+        border: 1px solid transparent;
+        width: 100%;
+    }
+
+    /* Current Month Days - Clickable */
+    .calendar-day.current-month {
+        cursor: pointer;
+        background: #f8f9fa;
+        color: #333;
+    }
+
+    .calendar-day.current-month:hover {
+        background-color: #e0f2fe;
+        transform: scale(1.05);
+        border-color: #007bff;
+        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+    }
+
+    .calendar-day.current-month:active {
+        transform: scale(0.95);
+    }
+
+    /* Other Month Days - Not Clickable */
+    .calendar-day.other-month {
+        color: #cbd5e1;
+        cursor: default;
+        opacity: 0.5;
+        background: transparent;
+    }
+
+    .calendar-day.other-month:hover {
+        transform: none;
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+    }
+
+    .calendar-day.today {
+        background-color: #007bff !important;
+        color: white;
+        font-weight: 700;
+        border-color: #0056b3;
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    }
+
+    .calendar-day.today:hover {
+        background-color: #0056b3 !important;
+    }
+
+    .calendar-day.has-entry {
+        background-color: #fef3c7;
+        color: #92400e;
+        border: 2px solid #f59e0b;
+        font-weight: 600;
+    }
+
+    .calendar-day.has-entry::after {
+        content: '●';
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        color: #ef4444;
+        font-size: 10px;
+    }
+
+    .calendar-day.has-entry:hover {
+        background-color: #fed7aa;
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+
+    /* Stats Card */
+    .stats-card {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        text-align: center;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 20px;
+    }
+
+    .stats-number {
+        font-size: 2.2rem;
+        font-weight: bold;
+        color: #1f2937;
+        line-height: 1.2;
+    }
+
+    .stats-label {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-top: 8px;
+    }
+
+    /* Modal */
+    .modal-content {
+        border-radius: var(--border-radius);
+        border: none;
+        box-shadow: var(--card-shadow);
+    }
+
+    .modal-header {
+        background: var(--primary-gradient);
+        color: white;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+
+    .modal-title {
+        font-size: 1.2rem;
+    }
+
+    /* Quick Action Items */
+    .quick-action-item {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        margin-bottom: 15px;
+        padding: 15px;
+    }
+
+    .quick-action-item:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .quick-action-item:active {
+        transform: translateY(-1px);
+    }
+
+    .quick-action-item a {
+        color: white !important;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .quick-action-item i {
+        font-size: 1.3rem;
+        flex-shrink: 0;
+    }
+
+    .action-text .fw-bold {
+        font-size: 1rem;
+        margin-bottom: 4px;
+    }
+
+    .action-text small {
+        font-size: 0.85rem;
+        opacity: 0.8;
+        line-height: 1.3;
+    }
+
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+        :root {
+            --desktop-padding: var(--mobile-padding);
+        }
+
+        .dashboard-header {
+            margin-bottom: 20px;
+        }
+
+        .dashboard-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .dashboard-header p {
+            font-size: 0.9rem;
+        }
+
+        .calendar-header-info {
+            flex-direction: column;
+            text-align: center;
+            gap: 8px;
+        }
+
+        .calendar-header-info h4 {
+            font-size: 1.2rem;
+        }
+
+        .calendar-instruction {
+            font-size: 0.8rem;
+        }
+
+        .calendar-header {
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .calendar-month-year {
+            font-size: 1.3rem;
+        }
+
+        .calendar-nav-btn {
+            width: 40px;
+            height: 40px;
+        }
+
+        .calendar-grid {
+            gap: 6px;
+        }
+
+        .calendar-day {
+            min-height: 40px;
+            font-size: 0.9rem;
+        }
+
+        .calendar-weekday {
+            padding: 8px 4px;
+            font-size: 0.8rem;
+            margin-bottom: 6px;
+        }
+
+        .stats-number {
+            font-size: 1.8rem;
+        }
+
+        .quick-action-item {
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .quick-action-item i {
+            font-size: 1.1rem;
+        }
+
+        .action-text .fw-bold {
+            font-size: 0.95rem;
+        }
+
+        .action-text small {
+            font-size: 0.8rem;
+        }
+
+        .modal-dialog {
+            margin: 10px;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .dashboard-header h2 {
+            font-size: 1.3rem;
+        }
+
+        .calendar-grid {
+            gap: 4px;
+        }
+
+        .calendar-day {
+            min-height: 35px;
+            font-size: 0.85rem;
+        }
+
+        .calendar-weekday {
+            font-size: 0.75rem;
+            padding: 6px 2px;
+        }
+
+        .calendar-nav-btn {
+            width: 35px;
+            height: 35px;
+            font-size: 0.9rem;
+        }
+
+        .calendar-month-year {
+            font-size: 1.1rem;
+        }
+
+        .stats-number {
+            font-size: 1.6rem;
+        }
+
+        .quick-action-item a {
+            gap: 10px;
+        }
+    }
+
+    /* Landscape phone optimization */
+    @media (max-width: 768px) and (orientation: landscape) {
+        .dashboard-header {
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .calendar-container,
+        .quick-actions-card .card-body {
+            padding: 15px;
+        }
+    }
+
+    /* Accessibility and Performance */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
+    .calendar-nav-btn:focus,
+    .calendar-day.current-month:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+    }
+
+    /* Touch device optimizations */
+    @media (hover: none) and (pointer: coarse) {
+        .calendar-day.current-month:hover {
+            transform: none;
+        }
+        
+        .quick-action-item:hover {
+            transform: none;
+        }
+        
+        .calendar-nav-btn:hover {
+            transform: none;
+        }
+    }
+
+    /* Loading state */
+    .loading {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+</style>
+
+<div class="dashboard-header">
+    <h2 class="mb-2"><i class="fas fa-tachometer-alt me-2"></i>Your Health Dashboard</h2>
+    <p class="mb-0 opacity-75">Track your wellness journey with our interactive calendar</p>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 col-md-7">
+        <div class="calendar-container">
+            <div class="calendar-header-info">
+                <h4 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Health Calendar</h4>
+                <small class="calendar-instruction">
+                    <span class="d-none d-md-inline">Click current month dates to add or view entries</span>
+                    <span class="d-md-none">Tap dates to add/view entries</span>
+                </small>
+            </div>
+            
+            <div class="custom-calendar">
+                <div class="calendar-header">
+                    <button class="calendar-nav-btn" id="prevMonth" aria-label="Previous month">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="calendar-month-year" id="monthYear"></div>
+                    <button class="calendar-nav-btn" id="nextMonth" aria-label="Next month">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                
+                <div class="calendar-grid" id="calendarGrid">
+                    <div class="calendar-weekday">Sun</div>
+                    <div class="calendar-weekday">Mon</div>
+                    <div class="calendar-weekday">Tue</div>
+                    <div class="calendar-weekday">Wed</div>
+                    <div class="calendar-weekday">Thu</div>
+                    <div class="calendar-weekday">Fri</div>
+                    <div class="calendar-weekday">Sat</div>
+                    <!-- Calendar days will be dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 col-md-5">
+        <div class="quick-actions-card card h-100 border-0">
+            <div class="card-body">
+                <h5 class="card-title text-white mb-4">
+                    <i class="fas fa-bolt me-2"></i>Quick Actions
+                </h5>
+                
+                <div class="stats-card">
+                    <div class="stats-number" id="totalEntries">{{ total_entries|default:0 }}</div>
+                    <div class="stats-label">Total Health Entries</div>
+                </div>
+                
+                <div class="quick-actions-list">
+                    <div class="quick-action-item">
+                        <a href="{% url 'bp_tracking' %}">
+                            <i class="fas fa-plus-circle"></i>
+                            <div class="action-text">
+                                <div class="fw-bold">Record New Data</div>
+                                <small>Add your latest health metrics</small>
+                            </div>
+                        </a>
+                    </div>
+                    
+                    <div class="quick-action-item">
+                        <a href="{% url 'report' %}">
+                            <i class="fas fa-chart-line"></i>
+                            <div class="action-text">
+                                <div class="fw-bold">View Report</div>
+                                <small>Analyze your health trends</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Modal for Entry Details -->
+<div class="modal fade" id="entryDetailsModal" tabindex="-1" aria-labelledby="entryDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="entryDetailsModalLabel">
+                    <i class="fas fa-info-circle me-2"></i>Entry Details for <span id="modalDate"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading details...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Health entries data from Django
+    const healthEntries = {{ event_dates|safe }} || [];
+    
+    let currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+    let isLoading = false;
+    
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    function renderCalendar() {
+        if (isLoading) return;
+        isLoading = true;
+        
+        const calendarGrid = document.getElementById('calendarGrid');
+        calendarGrid.classList.add('loading');
+        
+        setTimeout(() => {
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+            
+            document.getElementById('monthYear').textContent = 
+                `${monthNames[currentMonth]} ${currentYear}`;
+            
+            // Clear existing days
+            let dayElements = calendarGrid.querySelectorAll('.calendar-day');
+            dayElements.forEach(day => day.remove());
+            
+            // Previous month's trailing days (NOT CLICKABLE)
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day other-month';
+                dayElement.textContent = day;
+                dayElement.setAttribute('title', 'Previous month date - not clickable');
+                calendarGrid.appendChild(dayElement);
+            }
+            
+            // Current month days (CLICKABLE)
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayElement = document.createElement('div');
+                
+                let classes = 'calendar-day current-month';
+                if (dateStr === todayStr) classes += ' today';
+                if (healthEntries.includes(dateStr)) classes += ' has-entry';
+                
+                dayElement.className = classes;
+                dayElement.setAttribute('data-date', dateStr);
+                dayElement.setAttribute('tabindex', '0');
+                dayElement.setAttribute('role', 'button');
+                
+                // Set appropriate title and aria-label
+                let title = `${day} ${monthNames[currentMonth]} ${currentYear}`;
+                if (healthEntries.includes(dateStr)) {
+                    title += ' - Has health entry (click to view)';
+                } else {
+                    title += ' - Click to add entry';
+                }
+                dayElement.setAttribute('title', title);
+                dayElement.setAttribute('aria-label', title);
+                
+                dayElement.textContent = day;
+                calendarGrid.appendChild(dayElement);
+            }
+            
+            // Next month's leading days (NOT CLICKABLE)
+            const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+            const remainingCells = totalCells - (firstDay + daysInMonth);
+            for (let day = 1; day <= remainingCells; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'calendar-day other-month';
+                dayElement.textContent = day;
+                dayElement.setAttribute('title', 'Next month date - not clickable');
+                calendarGrid.appendChild(dayElement);
+            }
+            
+            // Add event listeners ONLY to current month days
+            document.querySelectorAll('.calendar-day.current-month').forEach(day => {
+                day.addEventListener('click', handleDayClick);
+                day.addEventListener('keydown', handleDayKeydown);
+            });
+            
+            calendarGrid.classList.remove('loading');
+            isLoading = false;
+        }, 200);
+    }
+    
+    function handleDayClick() {
+        const date = this.getAttribute('data-date');
+        if (!date) return;
+        
+        // Add visual feedback
+        this.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            this.style.transform = '';
+        }, 150);
+        
+        if (this.classList.contains('has-entry')) {
+            showEntryDetails(date);
+        } else {
+            // Add haptic feedback on mobile
+            if ('vibrate' in navigator) {
+                navigator.vibrate(50);
+            }
+            window.location.href = `{% url 'bp_tracking' %}?date=${date}`;
+        }
+    }
+    
+    function handleDayKeydown(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.click();
+        }
+    }
+    
+    function showEntryDetails(date) {
+        const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        document.getElementById('modalDate').textContent = formattedDate;
+        document.getElementById('modalBody').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading details...</p>
+            </div>
+        `;
+        
+        const modal = new bootstrap.Modal(document.getElementById('entryDetailsModal'));
+        modal.show();
+        
+        const url = '/get_entry_details/' + date + '/';
+        $.ajax({
+            url: url,
+            method: 'GET',
+            timeout: 10000,
+            success: function(response) {
+                const details = response.details || '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No details available for this date.</div>';
+                document.getElementById('modalBody').innerHTML = details;
+            },
+            error: function(xhr, status, error) {
+                let errorMessage = 'Failed to load details. Please try again later.';
+                if (status === 'timeout') {
+                    errorMessage = 'Request timed out. Please check your connection.';
+                }
+                document.getElementById('modalBody').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ${errorMessage}
+                    </div>
+                `;
+            }
+        });
+    }
+    
+    // Navigation event listeners with debouncing
+    let navigationTimeout;
+    
+    document.getElementById('prevMonth').addEventListener('click', function() {
+        clearTimeout(navigationTimeout);
+        navigationTimeout = setTimeout(() => {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        }, 100);
+    });
+    
+    document.getElementById('nextMonth').addEventListener('click', function() {
+        clearTimeout(navigationTimeout);
+        navigationTimeout = setTimeout(() => {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        }, 100);
+    });
+    
+    // Keyboard navigation for calendar
+    document.addEventListener('keydown', function(event) {
+        if (event.ctrlKey || event.metaKey) {
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                document.getElementById('prevMonth').click();
+            } else if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                document.getElementById('nextMonth').click();
+            }
+        }
+    });
+    
+    // Touch gestures for mobile calendar navigation
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    const calendarGrid = document.getElementById('calendarGrid');
+    
+    calendarGrid.addEventListener('touchstart', function(event) {
+        touchStartX = event.changedTouches[0].screenX;
+    });
+    
+    calendarGrid.addEventListener('touchend', function(event) {
+        touchEndX = event.changedTouches[0].screenX;
+        handleGesture();
+    });
+    
+    function handleGesture() {
+        const minSwipeDistance = 50;
+        const swipeDistance = touchEndX - touchStartX;
+        
+        if (Math.abs(swipeDistance) > minSwipeDistance) {
+            if (swipeDistance > 0) {
+                // Swipe right - previous month
+                document.getElementById('prevMonth').click();
+            } else {
+                // Swipe left - next month
+                document.getElementById('nextMonth').click();
+            }
+        }
+    }
+    
+    // Initial render
+    renderCalendar();
+    
+    // Update total entries count with animation
+    const totalEntriesElement = document.getElementById('totalEntries');
+    if (healthEntries && totalEntriesElement) {
+        let currentCount = 0;
+        const targetCount = healthEntries.length;
+        const increment = Math.max(1, Math.ceil(targetCount / 20));
+        
+        const updateCounter = () => {
+            if (currentCount < targetCount) {
+                currentCount = Math.min(currentCount + increment, targetCount);
+                totalEntriesElement.textContent = currentCount;
+                requestAnimationFrame(updateCounter);
+            } else {
+                totalEntriesElement.textContent = targetCount;
+            }
+        };
+        
+        if (targetCount > 0) {
+            updateCounter();
+        }
+    }
+    
+    // Handle connection status
+    window.addEventListener('online', function() {
+        console.log('Connection restored');
+    });
+    
+    window.addEventListener('offline', function() {
+        console.log('Connection lost');
+    });
+});
+</script>
+{% endblock %}

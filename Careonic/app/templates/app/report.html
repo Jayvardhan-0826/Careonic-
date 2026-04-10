@@ -1,0 +1,506 @@
+{% extends 'app/base.html' %}
+{% load app_filters %}
+{% block title %}Health Report{% endblock %}
+{% block content %}
+<div class="bg-light min-vh-100 py-4">
+    <div class="container-fluid">
+        <!-- Header Card -->
+        <div class="card shadow-lg mb-4 border-0">
+            <div class="card-header bg-gradient-primary text-white p-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;">
+                <div class="row align-items-center">
+                    <div class="col-lg-9">
+                        <h1 class="display-5 fw-bold mb-3 text-white">Health Report for {{ name }}</h1>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-light bg-opacity-25 text-white border border-light border-opacity-50 px-3 py-2 rounded-pill">
+                                <i class="fa-solid fa-user me-2"></i> {{ age }}
+                            </span>
+                            <span class="badge bg-light bg-opacity-25 text-white border border-light border-opacity-50 px-3 py-2 rounded-pill">
+                                <i class="fa-solid fa-venus-mars me-2"></i>{{ gender }}
+                            </span>
+                            <span class="badge bg-light bg-opacity-25 text-white border border-light border-opacity-50 px-3 py-2 rounded-pill">
+                                <i class="fa-solid fa-weight-scale me-2"></i>{{ current_weight }} kg
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 text-lg-end mt-3 mt-lg-0">
+                        <a href="{% url 'download_report' %}" 
+                           class="btn btn-light btn-lg shadow-sm fw-semibold" 
+                           target="_blank" 
+                           style="border-radius: 15px;">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>
+                            <span class="d-none d-sm-inline">Download PDF</span>
+                            <span class="d-sm-none">PDF</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Overview Header -->
+        <div class="mb-4">
+            <h2 class="display-6 fw-bold text-dark mb-2">Data Overview</h2>
+            <p class="text-muted fs-6">Last 30 Days Health Summary</p>
+        </div>
+
+        <!-- Health Data Sections -->
+        <div class="accordion" id="healthDataAccordion">
+            <!-- BP Measurements -->
+            <div class="accordion-item border-0 shadow-sm mb-4 rounded-3">
+                <h2 class="accordion-header" id="bpHeading">
+                    <button class="accordion-button collapsed rounded-3 border-0 py-4 px-4" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#bpCollapse" 
+                            aria-expanded="false" 
+                            aria-controls="bpCollapse"
+                            style="background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-danger bg-opacity-10 p-3 me-3">
+                                <i class="fa-solid fa-heart-pulse text-danger "></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-1 fw-semibold text-dark">BP Measurements</h4>
+                                <p class="mb-0 text-muted small">Blood pressure and heart rate tracking</p>
+                            </div>
+                        </div>
+                    </button>
+                </h2>
+                <div id="bpCollapse" class="accordion-collapse collapse" aria-labelledby="bpHeading" data-bs-parent="#healthDataAccordion">
+                    <div class="accordion-body p-4">
+                        {% if bp_data %}
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="fw-semibold text-muted small text-uppercase">Date</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Systolic</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Diastolic</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Heart Rate</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in bp_data %}
+                                            <tr>
+                                                <td class="fw-medium">{{ entry.measurement_date|date:"M d, Y" }}</td>
+                                                <td>
+                                                    <span class="badge bg-danger bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                        {{ entry.systolic_bp }} mmHg
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                        {{ entry.diastolic_bp }} mmHg
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {% if entry.heart_rate %}
+                                                        <span class="badge bg-success bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                            {{ entry.heart_rate }} bpm
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-muted">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-muted">{{ entry.notes|default:"None" }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="bg-light rounded-3 p-3 mt-3">
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <span class="text-muted me-2">Average BP:</span>
+                                        <span class="badge bg-success px-3 py-2 rounded-pill">
+                                            {{ bp_summary.avg_systolic|floatformat:0 }} / {{ bp_summary.avg_diastolic|floatformat:0 }} mmHg
+                                        </span>
+                                    </div>
+                                    {% if bp_summary.avg_heart_rate %}
+                                        <div class="col-md-6">
+                                            <span class="text-muted me-2">Avg Heart Rate:</span>
+                                            <span class="badge bg-info px-3 py-2 rounded-pill">
+                                                {{ bp_summary.avg_heart_rate|floatformat:0 }} bpm
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-bar-chart display-1 text-muted opacity-50"></i>
+                                <p class="text-muted mt-3">No BP data available.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weight Logs -->
+            <div class="accordion-item border-0 shadow-sm mb-4 rounded-3">
+                <h2 class="accordion-header" id="weightHeading">
+                    <button class="accordion-button collapsed rounded-3 border-0 py-4 px-4" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#weightCollapse" 
+                            aria-expanded="false" 
+                            aria-controls="weightCollapse"
+                            style="background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
+                                <i class="fa-solid fa-weight-scale text-success"></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-1 fw-semibold text-dark">Weight Logs</h4>
+                                <p class="mb-0 text-muted small">Weight tracking over time</p>
+                            </div>
+                        </div>
+                    </button>
+                </h2>
+                <div id="weightCollapse" class="accordion-collapse collapse" aria-labelledby="weightHeading" data-bs-parent="#healthDataAccordion">
+                    <div class="accordion-body p-4">
+                        {% if weight_data %}
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="fw-semibold text-muted small text-uppercase">Date</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Weight (kg)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in weight_data %}
+                                            <tr>
+                                                <td class="fw-medium">{{ entry.log_date|date:"M d, Y" }}</td>
+                                                <td>
+                                                    <span class="badge bg-success bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                        {{ entry.weight }} kg
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% if weight_summary.avg_weight %}
+                                <div class="bg-light rounded-3 p-3 mt-3">
+                                    <span class="text-muted me-2">Average Weight:</span>
+                                    <span class="badge bg-success px-3 py-2 rounded-pill">
+                                        {{ weight_summary.avg_weight|floatformat:1 }} kg
+                                    </span>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fa-solid fa-bar-chart display-1 text-muted opacity-50"></i>
+                                <p class="text-muted mt-3">No weight data available.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diet Logs -->
+            <div class="accordion-item border-0 shadow-sm mb-4 rounded-3">
+                <h2 class="accordion-header" id="dietHeading">
+                    <button class="accordion-button collapsed rounded-3 border-0 py-4 px-4" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#dietCollapse" 
+                            aria-expanded="false" 
+                            aria-controls="dietCollapse"
+                            style="background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3">
+                                <i class="fa-solid fa-bowl-food text-warning"></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-1 fw-semibold text-dark">Diet Logs</h4>
+                                <p class="mb-0 text-muted small">Nutritional intake tracking</p>
+                            </div>
+                        </div>
+                    </button>
+                </h2>
+                <div id="dietCollapse" class="accordion-collapse collapse" aria-labelledby="dietHeading" data-bs-parent="#healthDataAccordion">
+                    <div class="accordion-body p-4">
+                        {% if diet_data %}
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="fw-semibold text-muted small text-uppercase">Date</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Sodium (mg)</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Potassium (mg)</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Carbs (g)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in diet_data %}
+                                            <tr>
+                                                <td class="fw-medium">{{ entry.log_date|date:"M d, Y" }}</td>
+                                                <td>
+                                                    <span class="badge bg-danger bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                        {{ entry.sodium_intake }} mg
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                        {{ entry.potassium_intake }} mg
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                        {{ entry.carb_intake }} g
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="bg-light rounded-3 p-3 mt-3">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <span class="text-muted me-2">Avg Sodium:</span>
+                                        <span class="badge bg-danger bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                            {{ diet_summary.avg_sodium|floatformat:0 }} mg
+                                        </span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <span class="text-muted me-2">Avg Potassium:</span>
+                                        <span class="badge bg-primary bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                            {{ diet_summary.avg_potassium|floatformat:0 }} mg
+                                        </span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <span class="text-muted me-2">Avg Carbs:</span>
+                                        <span class="badge bg-warning bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                            {{ diet_summary.avg_carb|floatformat:0 }} g
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fa-solid fa-bar-chart display-1 text-muted opacity-50"></i>
+                                <p class="text-muted mt-3">No diet data available.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Symptoms -->
+            <div class="accordion-item border-0 shadow-sm mb-4 rounded-3">
+                <h2 class="accordion-header" id="symptomHeading">
+                    <button class="accordion-button collapsed rounded-3 border-0 py-4 px-4" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#symptomCollapse" 
+                            aria-expanded="false" 
+                            aria-controls="symptomCollapse"
+                            style="background: linear-gradient(135deg, #f8f0ff 0%, #ffffff 100%);">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
+                                <i class="fa-solid fa-face-frown text-info"></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-1 fw-semibold text-dark">Symptoms</h4>
+                                <p class="mb-0 text-muted small">Symptom tracking and severity</p>
+                            </div>
+                        </div>
+                    </button>
+                </h2>
+                <div id="symptomCollapse" class="accordion-collapse collapse" aria-labelledby="symptomHeading" data-bs-parent="#healthDataAccordion">
+                    <div class="accordion-body p-4">
+                        {% if symptom_data %}
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="fw-semibold text-muted small text-uppercase">Date</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Description</th>
+                                            <th class="fw-semibold text-muted small text-uppercase">Severity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for entry in symptom_data %}
+                                            <tr>
+                                                <td class="fw-medium">{{ entry.log_date|date:"M d, Y" }}</td>
+                                                <td>{{ entry.symptom_description }}</td>
+                                                <td>
+                                                    {% if entry.severity == "Low" %}
+                                                        <span class="badge bg-success bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                            {{ entry.severity }}
+                                                        </span>
+                                                    {% elif entry.severity == "Medium" %}
+                                                        <span class="badge bg-warning bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                            {{ entry.severity }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                            {{ entry.severity }}
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% if symptom_summary %}
+                                <div class="bg-light rounded-3 p-3 mt-3">
+                                    <div class="row g-2">
+                                        <div class="col-auto">
+                                            <span class="text-muted me-2">Severity Summary:</span>
+                                        </div>
+                                        {% for item in symptom_summary %}
+                                            <div class="col-auto">
+                                                {% if item.severity == "Low" %}
+                                                    <span class="badge bg-success bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                        {{ item.severity }}: {{ item.count }}
+                                                    </span>
+                                                {% elif item.severity == "Medium" %}
+                                                    <span class="badge bg-warning bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                        {{ item.severity }}: {{ item.count }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-danger bg-opacity-15 text-white px-3 py-2 rounded-pill">
+                                                        {{ item.severity }}: {{ item.count }}
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="fa-solid fa-bar-chart display-1 text-muted opacity-50"></i>
+                                <p class="text-muted mt-3">No symptom data available.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trend Visualizations -->
+        {% if bp_graph or weight_graph or diet_graph or symptom_graph %}
+            <div class="mt-5">
+                <div class="mb-4">
+                    <h2 class="display-6 fw-bold text-dark mb-2">Trend Visualizations</h2>
+                    <p class="text-muted fs-6">Visual insights into your health patterns</p>
+                </div>
+
+                <div class="row g-4">
+                    {% if bp_graph %}
+                        <div class="col-lg-6">
+                            <div class="card shadow-sm border-0 h-100 rounded-3">
+                                <div class="card-body p-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="rounded-circle bg-danger bg-opacity-10 p-2 me-3">
+                                            <i class="fa-solid fa-heart-pulse text-danger"></i>
+                                        </div>
+                                        <h5 class="card-title mb-0 fw-semibold">BP Trends</h5>
+                                    </div>
+                                    <div class="bg-light rounded-3 p-3">
+                                        <img src="data:image/png;base64,{{ bp_graph }}" alt="BP Trends Graph" class="img-fluid rounded">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if weight_graph %}
+                        <div class="col-lg-6">
+                            <div class="card shadow-sm border-0 h-100 rounded-3">
+                                <div class="card-body p-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="rounded-circle bg-success bg-opacity-10 p-2 me-3">
+                                            <i class="fa-solid fa-weight-scale text-success"></i>
+                                        </div>
+                                        <h5 class="card-title mb-0 fw-semibold">Weight Trends</h5>
+                                    </div>
+                                    <div class="bg-light rounded-3 p-3">
+                                        <img src="data:image/png;base64,{{ weight_graph }}" alt="Weight Trends Graph" class="img-fluid rounded">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if diet_graph %}
+                        <div class="col-lg-6">
+                            <div class="card shadow-sm border-0 h-100 rounded-3">
+                                <div class="card-body p-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="rounded-circle bg-warning bg-opacity-10 p-2 me-3">
+                                            <i class="fa-solid fa-bowl-food text-warning"></i>
+                                        </div>
+                                        <h5 class="card-title mb-0 fw-semibold">Diet Trends</h5>
+                                    </div>
+                                    <div class="bg-light rounded-3 p-3">
+                                        <img src="data:image/png;base64,{{ diet_graph }}" alt="Diet Trends Graph" class="img-fluid rounded">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if symptom_graph %}
+                        <div class="col-lg-6">
+                            <div class="card shadow-sm border-0 h-100 rounded-3">
+                                <div class="card-body p-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="rounded-circle bg-info bg-opacity-10 p-2 me-3">
+                                              <i class="fa-solid fa-face-frown text-info"></i>
+                                        </div>
+                                        <h5 class="card-title mb-0 fw-semibold">Symptoms Severity Count</h5>
+                                    </div>
+                                    <div class="bg-light rounded-3 p-3">
+                                        <img src="data:image/png;base64,{{ symptom_graph }}" alt="Symptoms Graph" class="img-fluid rounded">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(13, 110, 253, 0.05);
+        border-color: rgba(13, 110, 253, 0.125);
+    }
+    
+    .accordion-button:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .card {
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+    }
+    
+    @media (max-width: 768px) {
+        .display-5 {
+            font-size: 1.75rem;
+        }
+        
+        .display-6 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}

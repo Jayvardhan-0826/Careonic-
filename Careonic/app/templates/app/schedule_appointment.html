@@ -1,0 +1,157 @@
+{% extends 'app/base.html' %}
+{% load app_filters %}
+{% block title %}Schedule Appointment{% endblock %}
+
+{% block content %}
+<style>
+    .appointment-form-container {
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 40px;
+        background: linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%);
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.15);
+    }
+
+    .appointment-form-container h2 {
+        color: #2d3748;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-align: center;
+    }
+
+    .appointment-form-container .subtitle {
+        color: #718096;
+        text-align: center;
+        margin-bottom: 35px;
+        font-size: 15px;
+    }
+
+    .appointment-form-container form {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .appointment-form-container label {
+        color: #4a5568;
+        font-weight: 600;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .appointment-form-container select,
+    .appointment-form-container input[type="datetime-local"],
+    .appointment-form-container input[type="text"],
+    .appointment-form-container textarea {
+        padding: 14px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 15px;
+        font-family: inherit;
+        transition: all 0.3s ease;
+        background: white;
+        color: #2d3748;
+    }
+
+    .appointment-form-container select:focus,
+    .appointment-form-container input[type="datetime-local"]:focus,
+    .appointment-form-container input[type="text"]:focus,
+    .appointment-form-container textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .appointment-form-container select {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a5568' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+        padding-right: 40px;
+    }
+
+    .appointment-form-container textarea {
+        min-height: 120px;
+        resize: vertical;
+        font-family: inherit;
+    }
+
+    .appointment-form-container button[type="submit"] {
+        padding: 16px 32px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 10px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .appointment-form-container button[type="submit"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+    }
+
+    .appointment-form-container button[type="submit"]:active {
+        transform: translateY(0);
+    }
+
+    @media (max-width: 768px) {
+        .appointment-form-container {
+            margin: 20px;
+            padding: 30px 20px;
+        }
+    }
+</style>
+
+<div class="appointment-form-container">
+    <h2>Schedule Appointment</h2>
+    <p class="subtitle">Book your visit with our healthcare professionals</p>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="doctor">Select Doctor</label>
+            <select name="doctor" id="doctor" required>
+                {% for doc in doctors %}
+                    <option value="{{ doc }}" {% if form.initial.doctor == doc %}selected{% endif %}>{{ doc }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="date_time">Appointment Date & Time</label>
+            <input type="datetime-local" name="date_time" id="date_time" required>
+        </div>
+
+        <div class="form-group">
+            <label for="reason">Reason for Visit</label>
+            <textarea name="reason" id="reason" required placeholder="Please describe your symptoms or reason for appointment...">{{ form.initial.reason|default:'' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="contact_info">Contact Information</label>
+            <input type="text" name="contact_info" id="contact_info" value="{{ form.initial.contact_info|default:'' }}" placeholder="Phone number or email" required>
+        </div>
+
+        <button type="submit">Schedule Appointment</button>
+    </form>
+</div>
+{% endblock %}

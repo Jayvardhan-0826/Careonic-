@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: healthcare_mini
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn healthcare_mini.wsgi:application"
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: healthcare_mini.settings

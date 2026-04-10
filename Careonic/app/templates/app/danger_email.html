@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7fa;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        .alert-header {
+            background: linear-gradient(135deg, #fc8181 0%, #e53e3e 100%);
+            padding: 30px;
+            text-align: center;
+        }
+        .alert-header h3 {
+            color: white;
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .alert-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .email-body {
+            padding: 35px 30px;
+        }
+        .greeting {
+            color: #2d3748;
+            font-size: 16px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .alert-notice {
+            background: #fff5f5;
+            border-left: 4px solid #e53e3e;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .date-badge {
+            display: inline-block;
+            background: #e53e3e;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .alert-title {
+            color: #742a2a;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .danger-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+        }
+        .danger-item {
+            background: white;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border-left: 3px solid #e53e3e;
+            color: #2d3748;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        .danger-item:before {
+            content: "⚠️";
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+            color: white;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            margin-top: 25px;
+            box-shadow: 0 4px 15px rgba(229, 62, 62, 0.3);
+            transition: all 0.3s ease;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(229, 62, 62, 0.4);
+        }
+        .cta-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .email-footer {
+            background: #f8f9fa;
+            padding: 25px 30px;
+            text-align: center;
+            color: #718096;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .urgent-tag {
+            background: #e53e3e;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="alert-header">
+            <div class="alert-icon">🚨</div>
+            <h3>Health Alert - Action Required</h3>
+        </div>
+        <div class="email-body">
+            <p class="greeting">Dear {{ user_name }},</p>
+            <p class="greeting">We need to bring an important health matter to your attention. <span class="urgent-tag">Urgent</span></p>
+            
+            <div class="alert-notice">
+                <div class="date-badge">📅 {{ date_measured }}</div>
+                <div class="alert-title">Critical Health Metrics Detected</div>
+                <p style="color: #742a2a; font-size: 14px; margin-bottom: 10px;">The following health metrics have exceeded safe levels and require immediate attention:</p>
+                
+                <ul class="danger-list">
+                    {% for level in danger_levels %}
+                    <li class="danger-item">{{ level }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <p class="greeting" style="font-weight: 600; color: #742a2a;">⚠️ Please take action immediately to address these concerns.</p>
+            
+            <div class="cta-container">
+                <a href="{{ appointment_url }}" class="cta-button">📅 Schedule Appointment Now</a>
+            </div>
+        </div>
+        <div class="email-footer">
+            <p><strong>Need immediate assistance?</strong> Contact our 24/7 helpline.</p>
+            <p>Your health and safety are our top priority.</p>
+        </div>
+    </div>
+</body>
+</html>

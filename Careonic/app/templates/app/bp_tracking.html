@@ -1,0 +1,1097 @@
+{% extends 'app/base.html' %}
+{% load app_filters %}
+{% block title %}Health Tracking{% endblock %}
+{% block content %}
+
+<style>
+    /* Enhanced Health Tracking Styles */
+    .health-tracking-container {
+        background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, rgba(108, 99, 255, 0.05) 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-top: 1rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+    }
+
+    .page-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .page-header h2 {
+        color: #2d3748;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #007bff, #6c63ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .page-header p {
+        color: #718096;
+        font-size: 1.1rem;
+    }
+
+    /* Success Messages */
+    .success-message {
+        background: linear-gradient(135deg, #48bb78, #38b2ac);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideDown 0.5s ease-out;
+        box-shadow: 0 8px 25px rgba(72, 187, 120, 0.3);
+    }
+
+    @keyframes slideDown {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Progress Bar */
+    .progress-container {
+        margin-bottom: 2rem;
+    }
+
+    .progress-bar-custom {
+        background: #e2e8f0;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .progress-fill {
+        background: linear-gradient(135deg, #007bff, #6c63ff);
+        height: 100%;
+        width: 25%;
+        transition: width 0.3s ease;
+        border-radius: 4px;
+        position: relative;
+    }
+
+    .progress-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+
+    /* Enhanced Tabs */
+    .nav-tabs-custom {
+        border: none;
+        background: #f8f9fa;
+        border-radius: 16px;
+        padding: 8px;
+        margin-bottom: 2rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .nav-tabs-custom .nav-item {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .nav-tabs-custom .nav-link {
+        border: none;
+        background: transparent;
+        color: #718096;
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 12px 16px;
+        transition: all 0.3s ease;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        white-space: nowrap;
+    }
+
+    .nav-tabs-custom .nav-link:hover {
+        background: rgba(0, 123, 255, 0.1);
+        color: #007bff;
+        transform: translateY(-2px);
+    }
+
+    .nav-tabs-custom .nav-link.active {
+        background: linear-gradient(135deg, #007bff, #6c63ff);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+    }
+
+    /* Tab Icons */
+    .tab-icon {
+        font-size: 1.1rem;
+    }
+
+    /* Form Cards */
+    .form-card-enhanced {
+        background: white;
+        border: none;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 123, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .form-card-enhanced:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    .form-card-enhanced h5 {
+        color: #2d3748;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* Enhanced Form Controls */
+    .form-control-enhanced {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: #fafafa;
+    }
+
+    .form-control-enhanced:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        background: white;
+        transform: translateY(-1px);
+    }
+
+    .form-control-enhanced:hover:not(:focus) {
+        border-color: #cbd5e0;
+        background: white;
+    }
+
+    .form-select-enhanced {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        background: #fafafa url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23718096' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e") no-repeat right 12px center/16px 12px;
+        transition: all 0.3s ease;
+        appearance: none;
+    }
+
+    .form-select-enhanced:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        background-color: white;
+    }
+
+    /* Form Labels */
+    .form-label-enhanced {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Enhanced Buttons */
+    .btn-enhanced {
+        border: none;
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 12px 24px;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+
+    .btn-primary-enhanced {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+    }
+
+    .btn-primary-enhanced:hover {
+        background: linear-gradient(135deg, #0056b3, #003d82);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4);
+        color: white;
+    }
+
+    .btn-success-enhanced {
+        background: linear-gradient(135deg, #28a745, #218838);
+        color: white;
+        padding: 16px 32px;
+        font-size: 1.1rem;
+    }
+
+    .btn-success-enhanced:hover {
+        background: linear-gradient(135deg, #218838, #1e7e34);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+        color: white;
+    }
+
+    /* Recent Entries */
+    .recent-entries {
+        margin-top: 3rem;
+    }
+
+    .recent-entries h3 {
+        color: #2d3748;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .entries-table {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 123, 255, 0.1);
+    }
+
+    .table-enhanced {
+        margin: 0;
+    }
+
+    .table-enhanced thead th {
+        background: linear-gradient(135deg, #007bff, #6c63ff);
+        color: white;
+        font-weight: 600;
+        border: none;
+        padding: 1rem;
+    }
+
+    .table-enhanced tbody tr {
+        transition: all 0.3s ease;
+        border: none;
+    }
+
+    .table-enhanced tbody tr:hover {
+        background: rgba(0, 123, 255, 0.05);
+        transform: translateX(5px);
+    }
+
+    .table-enhanced tbody td {
+        padding: 1rem;
+        border-color: #e2e8f0;
+        vertical-align: middle;
+    }
+
+    .entry-type-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .badge-bp {
+        background: linear-gradient(135deg, #fc8181, #f56565);
+        color: white;
+    }
+
+    .badge-weight {
+        background: linear-gradient(135deg, #4fd1c7, #38b2ac);
+        color: white;
+    }
+
+    .badge-diet {
+        background: linear-gradient(135deg, #9f7aea, #805ad5);
+        color: white;
+    }
+
+    .badge-symptom {
+        background: linear-gradient(135deg, #f6ad55, #ed8936);
+        color: white;
+    }
+
+    .no-entries {
+        text-align: center;
+        padding: 3rem 2rem;
+        background: #f8f9fa;
+        border-radius: 16px;
+        border: 2px dashed #cbd5e0;
+        color: #718096;
+    }
+
+    .no-entries i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .health-tracking-container {
+            padding: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .page-header h2 {
+            font-size: 2rem;
+        }
+
+        .nav-tabs-custom {
+            flex-direction: column;
+        }
+
+        .nav-tabs-custom .nav-item {
+            flex: none;
+            width: 100%;
+        }
+
+        .nav-tabs-custom .nav-link {
+            justify-content: flex-start;
+            padding: 12px 20px;
+        }
+
+        .form-card-enhanced {
+            padding: 1.5rem;
+        }
+
+        .btn-success-enhanced {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .table-responsive {
+            border-radius: 16px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .health-tracking-container {
+            padding: 0.5rem;
+        }
+
+        .page-header h2 {
+            font-size: 1.75rem;
+        }
+
+        .form-card-enhanced {
+            padding: 1rem;
+        }
+
+        .entries-table {
+            font-size: 0.9rem;
+        }
+
+        .table-enhanced thead th,
+        .table-enhanced tbody td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+
+    /* Loading Animation */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .loading-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+</div>
+
+<div class="health-tracking-container">
+    <div class="page-header">
+        <h2><i class="fas fa-heartbeat"></i> Health Data Tracking</h2>
+        <p>Monitor your health journey with comprehensive data logging</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="success-message">
+                <i class="fas fa-check-circle"></i>
+                <span>{{ message }}</span>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="progress-container">
+        <div class="progress-bar-custom">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <form method="post" class="needs-validation" novalidate id="healthTrackingForm">
+        {% csrf_token %}
+        <input type="hidden" name="selected_date" value="{{ selected_date }}">
+        <ul class="nav nav-tabs nav-tabs-custom" id="dataTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="bp-tab" data-bs-toggle="tab" data-bs-target="#bp" type="button" role="tab">
+                    <i class="fas fa-heartbeat tab-icon"></i>
+                    <span>Blood Pressure</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="weight-tab" data-bs-toggle="tab" data-bs-target="#weight" type="button" role="tab">
+                    <i class="fas fa-weight tab-icon"></i>
+                    <span>Weight</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="diet-tab" data-bs-toggle="tab" data-bs-target="#diet" type="button" role="tab">
+                    <i class="fas fa-utensils tab-icon"></i>
+                    <span>Diet</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="symptom-tab" data-bs-toggle="tab" data-bs-target="#symptom" type="button" role="tab">
+                    <i class="fas fa-stethoscope tab-icon"></i>
+                    <span>Symptoms</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- BP Tab -->
+            <div class="tab-pane fade show active" id="bp" role="tabpanel">
+                <div class="form-card-enhanced">
+                    <h5><i class="fas fa-heartbeat text-danger"></i>Blood Pressure Monitoring</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ bp_form.measurement_date.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-calendar-alt"></i>Date
+                            </label>
+                            {{ bp_form.measurement_date|add_class:"form-control form-control-enhanced" }}
+                            {% if bp_form.measurement_date.errors %}
+                                {% for error in bp_form.measurement_date.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ bp_form.systolic_bp.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-arrow-up"></i>Systolic BP (mmHg)
+                            </label>
+                            {{ bp_form.systolic_bp|add_class:"form-control form-control-enhanced" }}
+                            {% if bp_form.systolic_bp.errors %}
+                                {% for error in bp_form.systolic_bp.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ bp_form.diastolic_bp.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-arrow-down"></i>Diastolic BP (mmHg)
+                            </label>
+                            {{ bp_form.diastolic_bp|add_class:"form-control form-control-enhanced" }}
+                            {% if bp_form.diastolic_bp.errors %}
+                                {% for error in bp_form.diastolic_bp.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ bp_form.heart_rate.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-heart"></i>Heart Rate (bpm)
+                            </label>
+                            {{ bp_form.heart_rate|add_class:"form-control form-control-enhanced" }}
+                            {% if bp_form.heart_rate.errors %}
+                                {% for error in bp_form.heart_rate.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-12">
+                            <label for="{{ bp_form.notes.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-sticky-note"></i>Notes
+                            </label>
+                            {{ bp_form.notes|add_class:"form-control form-control-enhanced" }}
+                            {% if bp_form.notes.errors %}
+                                {% for error in bp_form.notes.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="submit" name="submit_bp" class="btn btn-primary-enhanced btn-enhanced">
+                            <i class="fas fa-save"></i>Log Blood Pressure
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weight Tab -->
+            <div class="tab-pane fade" id="weight" role="tabpanel">
+                <div class="form-card-enhanced">
+                    <h5><i class="fas fa-weight text-info"></i>Weight Tracking</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ weight_form.log_date.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-calendar-alt"></i>Date
+                            </label>
+                            {{ weight_form.log_date|add_class:"form-control form-control-enhanced" }}
+                            {% if weight_form.log_date.errors %}
+                                {% for error in weight_form.log_date.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ weight_form.weight.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-weight-hanging"></i>Weight (kg)
+                            </label>
+                            {{ weight_form.weight|add_class:"form-control form-control-enhanced" }}
+                            {% if weight_form.weight.errors %}
+                                {% for error in weight_form.weight.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="submit" name="submit_weight" class="btn btn-primary-enhanced btn-enhanced">
+                            <i class="fas fa-save"></i>Log Weight
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diet Tab -->
+            <div class="tab-pane fade" id="diet" role="tabpanel">
+                <div class="form-card-enhanced">
+                    <h5><i class="fas fa-utensils text-success"></i>Nutritional Intake</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ diet_form.log_date.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-calendar-alt"></i>Date
+                            </label>
+                            {{ diet_form.log_date|add_class:"form-control form-control-enhanced" }}
+                            {% if diet_form.log_date.errors %}
+                                {% for error in diet_form.log_date.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ diet_form.sodium_intake.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-cube"></i>Sodium (mg)
+                            </label>
+                            {{ diet_form.sodium_intake|add_class:"form-control form-control-enhanced" }}
+                            {% if diet_form.sodium_intake.errors %}
+                                {% for error in diet_form.sodium_intake.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ diet_form.potassium_intake.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-leaf"></i>Potassium (mg)
+                            </label>
+                            {{ diet_form.potassium_intake|add_class:"form-control form-control-enhanced" }}
+                            {% if diet_form.potassium_intake.errors %}
+                                {% for error in diet_form.potassium_intake.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ diet_form.carb_intake.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-bread-slice"></i>Carbohydrates (g)
+                            </label>
+                            {{ diet_form.carb_intake|add_class:"form-control form-control-enhanced" }}
+                            {% if diet_form.carb_intake.errors %}
+                                {% for error in diet_form.carb_intake.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="submit" name="submit_diet" class="btn btn-primary-enhanced btn-enhanced">
+                            <i class="fas fa-save"></i>Log Diet
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Symptom Tab -->
+            <div class="tab-pane fade" id="symptom" role="tabpanel">
+                <div class="form-card-enhanced">
+                    <h5><i class="fas fa-stethoscope text-warning"></i>Symptom Tracking</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ symptom_form.log_date.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-calendar-alt"></i>Date
+                            </label>
+                            {{ symptom_form.log_date|add_class:"form-control form-control-enhanced" }}
+                            {% if symptom_form.log_date.errors %}
+                                {% for error in symptom_form.log_date.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ symptom_form.symptom_description.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-clipboard-list"></i>Symptom Description
+                            </label>
+                            {{ symptom_form.symptom_description|add_class:"form-control form-control-enhanced" }}
+                            {% if symptom_form.symptom_description.errors %}
+                                {% for error in symptom_form.symptom_description.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ symptom_form.severity.id_for_label }}" class="form-label form-label-enhanced">
+                                <i class="fas fa-exclamation-triangle"></i>Severity Level
+                            </label>
+                            {{ symptom_form.severity|add_class:"form-select form-select-enhanced" }}
+                            {% if symptom_form.severity.errors %}
+                                {% for error in symptom_form.severity.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="text-end mt-3">
+                        <button type="submit" name="submit_symptom" class="btn btn-primary-enhanced btn-enhanced">
+                            <i class="fas fa-save"></i>Log Symptom
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit All Button -->
+        <div class="text-center mt-4">
+            <button type="submit" name="submit_all" class="btn btn-success-enhanced btn-enhanced">
+                <i class="fas fa-cloud-upload-alt"></i>Submit All Data
+            </button>
+        </div>
+    </form>
+
+    <!-- Recent Entries Section -->
+    <div class="recent-entries">
+        <h3><i class="fas fa-history"></i>Recent Health Entries</h3>
+        {% if measurements or weight_logs or diet_logs or symptom_logs %}
+            <div class="entries-table">
+                <div class="table-responsive">
+                    <table class="table table-enhanced table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-calendar me-2"></i>Date</th>
+                                <th><i class="fas fa-tag me-2"></i>Type</th>
+                                <th><i class="fas fa-info-circle me-2"></i>Details</th>
+                                <th><i class="fas fa-sticky-note me-2"></i>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in measurements %}
+                            <tr>
+                                <td>{{ m.measurement_date|date:'M d, Y' }}</td>
+                                <td><span class="entry-type-badge badge-bp">Blood Pressure</span></td>
+                                <td><strong>{{ m.systolic_bp }}/{{ m.diastolic_bp }}</strong> mmHg{% if m.heart_rate %}, HR: <strong>{{ m.heart_rate }}</strong> bpm{% endif %}</td>
+                                <td>{{ m.notes|default:"—" }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% for w in weight_logs %}
+                            <tr>
+                                <td>{{ w.log_date|date:'M d, Y' }}</td>
+                                <td><span class="entry-type-badge badge-weight">Weight</span></td>
+                                <td><strong>{{ w.weight }}</strong> kg</td>
+                                <td>—</td>
+                            </tr>
+                            {% endfor %}
+                            {% for d in diet_logs %}
+                            <tr>
+                                <td>{{ d.log_date|date:'M d, Y' }}</td>
+                                <td><span class="entry-type-badge badge-diet">Diet</span></td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <small class="text-muted">Na:</small> <strong>{{ d.sodium_intake }}mg</strong>
+                                        <small class="text-muted">K:</small> <strong>{{ d.potassium_intake }}mg</strong>
+                                        <small class="text-muted">Carbs:</small> <strong>{{ d.carb_intake }}g</strong>
+                                    </div>
+                                </td>
+                                <td>—</td>
+                            </tr>
+                            {% endfor %}
+                            {% for s in symptom_logs %}
+                            <tr>
+                                <td>{{ s.log_date|date:'M d, Y' }}</td>
+                                <td><span class="entry-type-badge badge-symptom">Symptom</span></td>
+                                <td>
+                                    <strong>{{ s.symptom_description }}</strong>
+                                    <br><small class="text-muted">Severity: <span class="fw-bold">{{ s.severity|title }}</span></small>
+                                </td>
+                                <td>—</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <div class="no-entries">
+                <i class="fas fa-clipboard-list"></i>
+                <h5 class="mt-2 mb-2">No Health Entries Yet</h5>
+                <p class="mb-0">Start tracking your health data using the forms above.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    
+document.addEventListener('DOMContentLoaded', function() {
+    const submitAllBtn = document.getElementById('submitAllBtn');
+    if (submitAllBtn) {
+        submitAllBtn.addEventListener('click', function(event) {
+            const form = document.getElementById('healthTrackingForm');
+            if (form.checkValidity()) {
+                document.getElementById('loadingOverlay').classList.add('show');
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+                this.disabled = true;
+                // Force form submission
+                form.submit();
+            } else {
+                event.preventDefault();
+                event.stopPropagation();
+                form.classList.add('was-validated');
+                const firstError = document.querySelector('.is-invalid');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    // Initialize form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+                form.classList.add('was-validated');
+                setTimeout(function() {
+                    const firstError = document.querySelector('.is-invalid');
+                    if (firstError) {
+                        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            } else {
+                document.getElementById('loadingOverlay').classList.add('show');
+                const submitBtn = document.activeElement;
+                const originalContent = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                submitBtn.disabled = true;
+            }
+        }, false);
+    });
+
+    // Progress bar animation based on filled forms
+    function updateProgressBar() {
+        const tabs = document.querySelectorAll('.tab-pane');
+        let filledTabs = 0;
+        
+        tabs.forEach(function(tab) {
+            const requiredInputs = tab.querySelectorAll('input[required], select[required]');
+            let filledInputs = 0;
+            
+            requiredInputs.forEach(function(input) {
+                if (input.value.trim() !== '') {
+                    filledInputs++;
+                }
+            });
+            
+            if (filledInputs === requiredInputs.length && requiredInputs.length > 0) {
+                filledTabs++;
+            }
+        });
+        
+        const progressPercent = (filledTabs / tabs.length) * 100;
+        document.getElementById('progressFill').style.width = progressPercent + '%';
+    }
+
+    // Add event listeners to all form inputs
+    const allInputs = document.querySelectorAll('input, select, textarea');
+    allInputs.forEach(function(input) {
+        input.addEventListener('input', updateProgressBar);
+        input.addEventListener('change', updateProgressBar);
+    });
+
+    // Tab switching with progress update
+    const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabButtons.forEach(function(button) {
+        button.addEventListener('shown.bs.tab', function(event) {
+            updateProgressBar();
+            
+            tabButtons.forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        });
+    });
+
+    // Enhanced form submission with loading state
+    const submitButtons = document.querySelectorAll('button[type="submit"]');
+    submitButtons.forEach(function(button) {
+        button.addEventListener('click', function(event) {
+            const form = document.getElementById('healthTrackingForm');
+            if (form.checkValidity()) {
+                document.getElementById('loadingOverlay').classList.add('show');
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                this.disabled = true;
+            } else {
+                event.preventDefault();
+                event.stopPropagation();
+                form.classList.add('was-validated');
+            }
+        });
+    });
+
+    // Auto-fill today's date for empty date fields
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    const today = new Date().toISOString().split('T')[0];
+    
+    dateInputs.forEach(function(input) {
+        if (!input.value) {
+            input.value = today;
+        }
+        const urlParams = new URLSearchParams(window.location.search);
+        const dateParam = urlParams.get('date');
+        if (dateParam && !input.value) {
+            input.value = dateParam;
+        }
+    });
+
+    // Real-time validation feedback
+    const inputs = document.querySelectorAll('.form-control-enhanced, .form-select-enhanced');
+    inputs.forEach(function(input) {
+        input.addEventListener('blur', function() {
+            if (this.checkValidity()) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            } else {
+                this.classList.remove('is-valid');
+                this.classList.add('is-invalid');
+            }
+        });
+
+        input.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid') && this.checkValidity()) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+        });
+    });
+
+    // Auto-dismiss success messages
+    const successMessages = document.querySelectorAll('.success-message');
+    successMessages.forEach(function(message) {
+        setTimeout(function() {
+            if (message && message.parentNode) {
+                message.style.opacity = '0';
+                message.style.transform = 'translateY(-20px)';
+                setTimeout(function() {
+                    if (message.parentNode) {
+                        message.parentNode.removeChild(message);
+                    }
+                }, 300);
+            }
+        }, 5000);
+    });
+
+    // Enhanced table row interactions
+    const tableRows = document.querySelectorAll('.table-enhanced tbody tr');
+    tableRows.forEach(function(row) {
+        row.addEventListener('click', function() {
+            this.style.transform = 'translateX(10px)';
+            setTimeout(() => {
+                this.style.transform = 'translateX(5px)';
+            }, 150);
+        });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(event) {
+        if (event.altKey && event.key >= '1' && event.key <= '4') {
+            event.preventDefault();
+            const tabIndex = parseInt(event.key) - 1;
+            const tabs = document.querySelectorAll('[data-bs-toggle="tab"]');
+            if (tabs[tabIndex]) {
+                const tab = new bootstrap.Tab(tabs[tabIndex]);
+                tab.show();
+            }
+        }
+        
+        if (event.ctrlKey && event.key === 'Enter') {
+            event.preventDefault();
+            const activeTab = document.querySelector('.tab-pane.active');
+            const submitBtn = activeTab.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.click();
+            } else {
+                document.getElementById('submitAllBtn').click();
+            }
+        }
+    });
+
+    // Initial progress update
+    updateProgressBar();
+
+    // Responsive table enhancements
+    function handleTableResponsiveness() {
+        const tables = document.querySelectorAll('.table-responsive');
+        tables.forEach(function(table) {
+            if (window.innerWidth < 768) {
+                table.style.fontSize = '0.85rem';
+            } else {
+                table.style.fontSize = '';
+            }
+        });
+    }
+
+    handleTableResponsiveness();
+    window.addEventListener('resize', handleTableResponsiveness);
+});
+
+// Additional utility functions
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 100px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(notification);
+    setTimeout(function() {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const submitAllBtn = document.querySelector('button[name="submit_all"]');
+    if (submitAllBtn) {
+        submitAllBtn.addEventListener('click', function(event) {
+            const form = document.getElementById('healthTrackingForm');
+            if (form.checkValidity()) {
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) {
+                    loadingOverlay.classList.add('show');
+                }
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+                this.disabled = true;
+                // Let the form submit naturally; browser will handle redirect
+                form.submit();
+            } else {
+                event.preventDefault();
+                event.stopPropagation();
+                form.classList.add('was-validated');
+                const firstError = document.querySelector('.is-invalid');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    // Handle individual form submissions
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+                form.classList.add('was-validated');
+                setTimeout(function() {
+                    const firstError = document.querySelector('.is-invalid');
+                    if (firstError) {
+                        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            } else {
+                const submitBtn = document.activeElement;
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                if (loadingOverlay) {
+                    loadingOverlay.classList.add('show');
+                }
+                if (submitBtn) {
+                    const originalContent = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                    submitBtn.disabled = true;
+
+                    // Listen for page load to reset
+                    window.addEventListener('load', function resetLoading() {
+                        loadingOverlay.classList.remove('show');
+                        submitBtn.innerHTML = originalContent;
+                        submitBtn.disabled = false;
+                        window.removeEventListener('load', resetLoading);
+                    });
+                }
+            }
+        }, false);
+    });
+</script>
+
+{% endblock %}

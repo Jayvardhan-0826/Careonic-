@@ -1,0 +1,764 @@
+{% extends 'app/base.html' %}
+{% block title %}Vitals Dashboard — {{ patient_id|default:"Unknown" }}{% endblock %}
+
+{% block content %}
+<style>
+    /* ── Design Tokens ── */
+    :root {
+        --vd-glucose:      #f97316;
+        --vd-glucose-soft: rgba(249,115,22,.12);
+        --vd-hr:           #3b82f6;
+        --vd-hr-soft:      rgba(59,130,246,.10);
+        --vd-purple:       #8b5cf6;
+        --vd-teal:         #0ea5e9;
+        --vd-pink:         #ec4899;
+        --vd-green:        #10b981;
+        --vd-dark:         #0f172a;
+        --vd-slate:        #64748b;
+        --vd-light-bg:     #f8fafc;
+        --vd-card-radius:  18px;
+        --vd-shadow:       0 8px 32px rgba(0,0,0,.08);
+        --vd-shadow-lg:    0 16px 48px rgba(0,0,0,.12);
+    }
+
+    /* ── Google Font ── */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    .vd-page { font-family: 'Inter', sans-serif; }
+
+    /* ── Animated gradient header ── */
+    .vd-header {
+        background: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 40%, #ec4899 80%, #f97316 100%);
+        background-size: 300% 300%;
+        animation: gradientShift 8s ease infinite;
+        color: white;
+        border-radius: var(--vd-card-radius);
+        padding: 32px 36px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+    }
+    .vd-header::before {
+        content: '';
+        position: absolute;
+        top: -50px; right: -50px;
+        width: 200px; height: 200px;
+        background: rgba(255,255,255,.06);
+        border-radius: 50%;
+    }
+    .vd-header::after {
+        content: '';
+        position: absolute;
+        bottom: -30px; left: 30%;
+        width: 120px; height: 120px;
+        background: rgba(255,255,255,.04);
+        border-radius: 50%;
+    }
+    @keyframes gradientShift {
+        0%   { background-position: 0% 50%;   }
+        50%  { background-position: 100% 50%; }
+        100% { background-position: 0% 50%;   }
+    }
+    .vd-header h2 { font-size: 1.85rem; font-weight: 800; margin-bottom: 6px; position: relative; }
+    .vd-header p  { opacity: .85; font-size: .92rem; margin: 0; position: relative; }
+
+    .vd-pid {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: rgba(255,255,255,.18);
+        border: 1px solid rgba(255,255,255,.3);
+        border-radius: 50px;
+        padding: 7px 20px;
+        font-size: .88rem; font-weight: 700;
+        margin-top: 14px;
+        backdrop-filter: blur(8px);
+        position: relative;
+        transition: transform .2s;
+    }
+    .vd-pid:hover { transform: scale(1.03); }
+    .vd-pid.unlinked { background: rgba(239,68,68,.3); border-color: rgba(239,68,68,.5); }
+
+    /* ── Stat summary row ── */
+    .vd-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 28px; }
+    @media (max-width: 992px) { .vd-stats { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 520px) { .vd-stats { grid-template-columns: 1fr; } }
+
+    .vd-stat {
+        border-radius: var(--vd-card-radius);
+        padding: 22px 24px;
+        display: flex; align-items: center; gap: 16px;
+        box-shadow: var(--vd-shadow);
+        transition: transform .25s, box-shadow .25s;
+        border: 1px solid transparent;
+    }
+    .vd-stat:hover { transform: translateY(-4px); box-shadow: var(--vd-shadow-lg); }
+
+    .vd-stat-icon {
+        width: 52px; height: 52px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; flex-shrink: 0; position: relative;
+    }
+    .vd-stat-icon::after {
+        content: ''; position: absolute; inset: -4px;
+        border-radius: 18px; opacity: .25;
+    }
+
+    .vd-stat-label { font-size: .72rem; font-weight: 700; color: var(--vd-slate); text-transform: uppercase; letter-spacing: .06em; }
+    .vd-stat-val   { font-size: 1.7rem; font-weight: 900; line-height: 1.1; margin: 2px 0; }
+    .vd-stat-unit  { font-size: .75rem; color: #94a3b8; font-weight: 500; }
+
+    .vd-stat.glucose { background: linear-gradient(135deg, #fff7ed, #fed7aa); border-color: #fdba74; }
+    .vd-stat.glucose .vd-stat-icon { background: var(--vd-glucose); color: white; }
+    .vd-stat.glucose .vd-stat-val  { color: #c2410c; }
+
+    .vd-stat.hr { background: linear-gradient(135deg, #eff6ff, #bfdbfe); border-color: #93c5fd; }
+    .vd-stat.hr .vd-stat-icon { background: var(--vd-hr); color: white; }
+    .vd-stat.hr .vd-stat-val  { color: #1d4ed8; }
+
+    .vd-stat.records { background: linear-gradient(135deg, #f0fdf4, #bbf7d0); border-color: #86efac; }
+    .vd-stat.records .vd-stat-icon { background: var(--vd-green); color: white; }
+    .vd-stat.records .vd-stat-val  { color: #166534; }
+
+    .vd-stat.status { background: linear-gradient(135deg, #faf5ff, #e9d5ff); border-color: #d8b4fe; }
+    .vd-stat.status .vd-stat-icon { background: var(--vd-purple); color: white; }
+    .vd-stat.status .vd-stat-val  { color: #6b21a8; font-size: 1rem; }
+
+    /* ── Cards ── */
+    .vd-card {
+        background: white;
+        border-radius: var(--vd-card-radius);
+        box-shadow: var(--vd-shadow);
+        padding: 28px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+    }
+    .vd-card-title {
+        font-size: 1.1rem; font-weight: 800; color: var(--vd-dark);
+        display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+    }
+    .vd-card-title i { font-size: 1rem; }
+    .vd-card-sub { font-size: .82rem; color: var(--vd-slate); margin-bottom: 20px; }
+
+    /* ── Tabs ── */
+    .vd-tabs {
+        display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .vd-tab {
+        padding: 9px 20px; border-radius: 10px;
+        font-size: .84rem; font-weight: 600;
+        background: #f1f5f9; color: var(--vd-slate);
+        border: none; cursor: pointer; transition: all .2s;
+    }
+    .vd-tab:hover { background: #e2e8f0; }
+    .vd-tab.active {
+        background: linear-gradient(135deg, var(--vd-purple), var(--vd-teal));
+        color: white; box-shadow: 0 4px 16px rgba(139,92,246,.3);
+    }
+
+    /* ── Chart containers ── */
+    .vd-chart-wrap { position: relative; min-height: 300px; }
+    .vd-chart-wrap canvas { max-height: 360px; }
+
+    .vd-spinner-overlay {
+        position: absolute; inset: 0;
+        background: rgba(255,255,255,.85); border-radius: var(--vd-card-radius);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        z-index: 10; gap: 12px;
+        opacity: 0; visibility: hidden; transition: all .3s;
+    }
+    .vd-spinner-overlay.show { opacity: 1; visibility: visible; }
+    .vd-spinner-overlay .spinner-border { width: 2.5rem; height: 2.5rem; }
+    .vd-spinner-text { font-size: .85rem; color: var(--vd-slate); font-weight: 600; }
+
+    .vd-empty-state {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        min-height: 260px; color: #94a3b8; text-align: center;
+    }
+    .vd-empty-state i { font-size: 3.5rem; margin-bottom: 14px; opacity: .4; }
+    .vd-empty-state p { font-size: .9rem; margin: 0; line-height: 1.5; }
+
+    /* ── Legend ── */
+    .vd-legend { display: flex; gap: 24px; margin-bottom: 14px; flex-wrap: wrap; }
+    .vd-legend-item { display: flex; align-items: center; gap: 7px; font-size: .82rem; font-weight: 600; color: #475569; }
+    .vd-legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+    /* ── Buttons ── */
+    .vd-btn {
+        border: none; border-radius: 12px;
+        padding: 10px 24px; font-size: .88rem; font-weight: 700;
+        cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+        transition: all .3s; color: white;
+    }
+    .vd-btn:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
+    .vd-btn-predict {
+        background: linear-gradient(135deg, var(--vd-purple), var(--vd-hr));
+    }
+    .vd-btn-predict:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(139,92,246,.4); }
+    .vd-btn-refresh {
+        background: linear-gradient(135deg, var(--vd-teal), #6366f1);
+    }
+    .vd-btn-refresh:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(14,165,233,.4); }
+
+    /* ── Alert area ── */
+    .vd-alert-area { margin-bottom: 16px; }
+
+    /* ── History data table ── */
+    .vd-table-wrap { max-height: 420px; overflow-y: auto; border-radius: 12px; border: 1px solid #e2e8f0; }
+    .vd-table { width: 100%; border-collapse: collapse; }
+    .vd-table thead th {
+        position: sticky; top: 0; z-index: 2;
+        background: #f1f5f9; padding: 10px 16px;
+        font-size: .76rem; font-weight: 700; color: var(--vd-slate);
+        text-transform: uppercase; letter-spacing: .05em;
+        border-bottom: 2px solid #e2e8f0; text-align: left;
+    }
+    .vd-table tbody td {
+        padding: 10px 16px; font-size: .85rem; color: #334155;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .vd-table tbody tr:hover td { background: #f8fafc; }
+    .vd-pill {
+        display: inline-block; padding: 3px 12px;
+        border-radius: 50px; font-size: .76rem; font-weight: 600;
+    }
+    .vd-pill-glu { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
+    .vd-pill-hr  { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
+
+    /* ── Prediction cards ── */
+    .vd-pred-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 16px; }
+    .vd-pred-card {
+        background: var(--vd-light-bg);
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 16px; text-align: center;
+        transition: transform .2s, box-shadow .2s;
+    }
+    .vd-pred-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+    .vd-pred-step { font-size: .7rem; font-weight: 700; color: var(--vd-slate); text-transform: uppercase; letter-spacing: .05em; }
+    .vd-pred-val { font-size: 1.3rem; font-weight: 800; margin: 4px 0 2px; }
+    .vd-pred-unit { font-size: .72rem; color: #94a3b8; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+        .vd-header { padding: 22px 20px; }
+        .vd-header h2 { font-size: 1.4rem; }
+        .vd-card { padding: 20px; }
+    }
+</style>
+
+<div class="vd-page">
+
+    <!-- ─── HEADER ─────────────────────────────────────────────────── -->
+    <div class="vd-header">
+        <h2><i class="fas fa-chart-area me-2"></i>Vitals Dashboard</h2>
+        <p>View your complete vitals history from MongoDB and get AI-powered 60-minute predictions.</p>
+        {% if patient_id %}
+            <div class="vd-pid"><i class="fas fa-id-badge"></i> Patient: <strong>{{ patient_id }}</strong></div>
+        {% else %}
+            <div class="vd-pid unlinked"><i class="fas fa-exclamation-triangle"></i> No Patient ID linked — contact admin</div>
+        {% endif %}
+    </div>
+
+    <!-- ─── ALERTS ─────────────────────────────────────────────────── -->
+    <div class="vd-alert-area" id="vdAlertArea"></div>
+
+    <!-- ─── STAT SUMMARY ROW (filled by JS) ────────────────────────── -->
+    <div class="vd-stats" id="vdStats" style="display:none;">
+        <div class="vd-stat glucose">
+            <div class="vd-stat-icon"><i class="fas fa-droplet"></i></div>
+            <div>
+                <div class="vd-stat-label">Avg Glucose</div>
+                <div class="vd-stat-val" id="statAvgGlu">—</div>
+                <div class="vd-stat-unit">mg/dL</div>
+            </div>
+        </div>
+        <div class="vd-stat hr">
+            <div class="vd-stat-icon"><i class="fas fa-heartbeat"></i></div>
+            <div>
+                <div class="vd-stat-label">Avg Heart Rate</div>
+                <div class="vd-stat-val" id="statAvgHR">—</div>
+                <div class="vd-stat-unit">bpm</div>
+            </div>
+        </div>
+        <div class="vd-stat records">
+            <div class="vd-stat-icon"><i class="fas fa-database"></i></div>
+            <div>
+                <div class="vd-stat-label">Total Records</div>
+                <div class="vd-stat-val" id="statTotal">—</div>
+                <div class="vd-stat-unit">vitals entries</div>
+            </div>
+        </div>
+        <div class="vd-stat status">
+            <div class="vd-stat-icon"><i class="fas fa-signal"></i></div>
+            <div>
+                <div class="vd-stat-label">API Status</div>
+                <div class="vd-stat-val" id="statAPI">Checking…</div>
+                <div class="vd-stat-unit" id="statAPIHint">FastAPI server</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── MAIN CONTENT AREA ──────────────────────────────────────── -->
+    <div class="row g-4">
+
+        <!-- ── LEFT COLUMN: History Chart + Table ── -->
+        <div class="col-lg-7">
+            <div class="vd-card">
+                <div class="vd-card-title"><i class="fas fa-clock-rotate-left" style="color:var(--vd-green)"></i> Vitals History <small style="font-weight:400; font-size:.78rem; color:var(--vd-slate); margin-left:auto;">from MongoDB</small></div>
+                <div class="vd-card-sub">Complete recorded vitals for patient <strong>{{ patient_id|default:"—" }}</strong></div>
+
+                <!-- Tabs -->
+                <div class="vd-tabs">
+                    <button class="vd-tab active" data-view="chart" onclick="switchHistoryView('chart', this)"><i class="fas fa-chart-line me-1"></i> Chart</button>
+                    <button class="vd-tab" data-view="table" onclick="switchHistoryView('table', this)"><i class="fas fa-table me-1"></i> Table</button>
+                </div>
+
+                <!-- Chart view -->
+                <div id="historyChartView">
+                    <div class="vd-legend" id="historyLegend" style="display:none;">
+                        <div class="vd-legend-item"><div class="vd-legend-dot" style="background:var(--vd-glucose)"></div>Glucose (mg/dL)</div>
+                        <div class="vd-legend-item"><div class="vd-legend-dot" style="background:var(--vd-hr)"></div>Heart Rate (bpm)</div>
+                    </div>
+                    <div class="vd-chart-wrap">
+                        <div class="vd-spinner-overlay show" id="historySpinner">
+                            <div class="spinner-border text-primary"></div>
+                            <div class="vd-spinner-text">Loading vitals from MongoDB…</div>
+                        </div>
+                        <div class="vd-empty-state" id="historyEmpty" style="display:none;">
+                            <i class="fas fa-database"></i>
+                            <p>No vitals data found in MongoDB<br>for this patient.</p>
+                        </div>
+                        <canvas id="historyChart" style="display:none;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Table view (hidden by default) -->
+                <div id="historyTableView" style="display:none;">
+                    <div class="vd-table-wrap">
+                        <table class="vd-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Timestamp</th>
+                                    <th>Glucose</th>
+                                    <th>Heart Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── RIGHT COLUMN: Predictions ── -->
+        <div class="col-lg-5">
+            <div class="vd-card">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
+                    <div>
+                        <div class="vd-card-title"><i class="fas fa-brain" style="color:var(--vd-purple)"></i> 60-Min Prediction</div>
+                        <div class="vd-card-sub">AI-powered LSTM forecast from last 12 vitals</div>
+                    </div>
+                    <button class="vd-btn vd-btn-predict" id="predictBtn" onclick="fetchPredictions()">
+                        <i class="fas fa-wand-magic-sparkles"></i> Get Forecast
+                    </button>
+                </div>
+
+                <div class="vd-legend" id="predLegend" style="display:none;">
+                    <div class="vd-legend-item"><div class="vd-legend-dot" style="background:var(--vd-glucose)"></div>Glucose</div>
+                    <div class="vd-legend-item"><div class="vd-legend-dot" style="background:var(--vd-hr)"></div>Heart Rate</div>
+                </div>
+
+                <div class="vd-chart-wrap">
+                    <div class="vd-spinner-overlay" id="predSpinner">
+                        <div class="spinner-border text-primary"></div>
+                        <div class="vd-spinner-text">Running LSTM model…</div>
+                    </div>
+                    <div class="vd-empty-state" id="predEmpty">
+                        <i class="fas fa-brain"></i>
+                        <p>Click <strong>Get Forecast</strong> to run<br>the AI prediction model.</p>
+                    </div>
+                    <canvas id="predChart" style="display:none;"></canvas>
+                </div>
+
+                <!-- Prediction value cards -->
+                <div id="predCardsSection" style="display:none;">
+                    <div style="margin-top:20px; padding-top:18px; border-top:1px solid #e2e8f0;">
+                        <div style="font-size:.82rem; font-weight:700; color:var(--vd-slate); text-transform:uppercase; letter-spacing:.04em; margin-bottom:12px;">
+                            <i class="fas fa-list-ol me-1"></i> Step-by-Step Predictions
+                        </div>
+                        <div class="vd-pred-grid" id="predCards"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Chart.js ─── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+(function() {
+    'use strict';
+
+    const PATIENT_ID = '{{ patient_id|default:"" }}';
+    let historyChart = null;
+    let predChart = null;
+    let historyData = [];
+
+    // ── Helpers ───────────────────────────────────────────────
+    function showAlert(msg, type='danger') {
+        const area = document.getElementById('vdAlertArea');
+        const icons = { success: 'check-circle', warning: 'exclamation-triangle', danger: 'exclamation-circle', info: 'info-circle' };
+        area.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show d-flex align-items-center gap-2" role="alert" style="border-radius:12px;">
+                <i class="fas fa-${icons[type] || 'info-circle'}"></i>
+                <span>${msg}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+        // Auto-dismiss success after 5s
+        if (type === 'success') setTimeout(() => { area.innerHTML = ''; }, 5000);
+    }
+
+    function formatTimestamp(ts) {
+        if (!ts) return '—';
+        const d = new Date(ts);
+        if (isNaN(d)) return ts;
+        return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) +
+               ' ' + d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+    }
+
+    function formatShortTS(ts) {
+        if (!ts) return '';
+        const d = new Date(ts);
+        if (isNaN(d)) return ts;
+        return d.toLocaleDateString('en-IN', { day:'2-digit', month:'short' }) +
+               ' ' + d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:false });
+    }
+
+    // ── Load History from MongoDB ─────────────────────────────
+    async function loadHistory() {
+        if (!PATIENT_ID) {
+            document.getElementById('historySpinner').classList.remove('show');
+            document.getElementById('historyEmpty').style.display = 'flex';
+            showAlert('No patient ID linked to your account. Contact admin.', 'warning');
+            return;
+        }
+
+        try {
+            const res = await fetch('{% url "api_vitals_history" %}');
+            const data = await res.json();
+            document.getElementById('historySpinner').classList.remove('show');
+
+            if (data.error) {
+                showAlert(data.error, 'danger');
+                document.getElementById('historyEmpty').style.display = 'flex';
+                return;
+            }
+
+            historyData = data.records || [];
+            if (historyData.length === 0) {
+                document.getElementById('historyEmpty').style.display = 'flex';
+                showAlert('No vitals records found in MongoDB for ' + PATIENT_ID, 'info');
+                return;
+            }
+
+            // Update stats
+            updateStats(historyData, data.total);
+            // Render chart
+            renderHistoryChart(historyData);
+            // Populate table
+            populateHistoryTable(historyData);
+            showAlert(`Loaded ${data.total} vitals records from MongoDB.`, 'success');
+
+        } catch (err) {
+            document.getElementById('historySpinner').classList.remove('show');
+            document.getElementById('historyEmpty').style.display = 'flex';
+            showAlert('Failed to connect to server: ' + err.message, 'danger');
+        }
+    }
+
+    // ── Stats Row ─────────────────────────────────────────────
+    function updateStats(records, total) {
+        const avgGlu = records.reduce((s, r) => s + (r.glucose || 0), 0) / records.length;
+        const avgHR  = records.reduce((s, r) => s + (r.heart_rate || 0), 0) / records.length;
+
+        document.getElementById('statAvgGlu').textContent = avgGlu.toFixed(1);
+        document.getElementById('statAvgHR').textContent  = avgHR.toFixed(1);
+        document.getElementById('statTotal').textContent  = total;
+        document.getElementById('vdStats').style.display   = 'grid';
+    }
+
+    // ── History Chart ─────────────────────────────────────────
+    function renderHistoryChart(records) {
+        // Downsample if too many points (for performance)
+        let data = records;
+        if (data.length > 200) {
+            const step = Math.ceil(data.length / 200);
+            data = data.filter((_, i) => i % step === 0);
+        }
+
+        const labels = data.map(r => formatShortTS(r.time_stamp));
+        const glu    = data.map(r => r.glucose);
+        const hr     = data.map(r => r.heart_rate);
+
+        const canvas = document.getElementById('historyChart');
+        canvas.style.display = 'block';
+        document.getElementById('historyLegend').style.display = 'flex';
+        document.getElementById('historyEmpty').style.display   = 'none';
+
+        if (historyChart) historyChart.destroy();
+
+        historyChart = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Glucose (mg/dL)',
+                        data: glu,
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249,115,22,.08)',
+                        borderWidth: 2,
+                        pointRadius: data.length > 60 ? 0 : 3,
+                        pointHoverRadius: 5,
+                        tension: 0.35,
+                        fill: true,
+                        yAxisID: 'yGlu',
+                    },
+                    {
+                        label: 'Heart Rate (bpm)',
+                        data: hr,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,.06)',
+                        borderWidth: 2,
+                        pointRadius: data.length > 60 ? 0 : 3,
+                        pointHoverRadius: 5,
+                        tension: 0.35,
+                        fill: true,
+                        yAxisID: 'yHR',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: { duration: 1200, easing: 'easeInOutQuart' },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15,23,42,.92)',
+                        titleColor: '#e2e8f0', bodyColor: '#e2e8f0',
+                        padding: 12, cornerRadius: 10,
+                        callbacks: {
+                            label: ctx => {
+                                const u = ctx.datasetIndex === 0 ? ' mg/dL' : ' bpm';
+                                return `  ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(1)}${u}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(0,0,0,.04)' },
+                        ticks: {
+                            font: { size: 10 }, color: '#94a3b8',
+                            maxRotation: 45, autoSkip: true, maxTicksLimit: 20
+                        }
+                    },
+                    yGlu: {
+                        type: 'linear', position: 'left',
+                        grid: { color: 'rgba(249,115,22,.06)' },
+                        ticks: { color: '#c2410c', font: { size: 10 }, callback: v => v + '' },
+                        title: { display: true, text: 'Glucose (mg/dL)', color: '#c2410c', font: { size: 10, weight: '600' } }
+                    },
+                    yHR: {
+                        type: 'linear', position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#1d4ed8', font: { size: 10 }, callback: v => v + '' },
+                        title: { display: true, text: 'Heart Rate (bpm)', color: '#1d4ed8', font: { size: 10, weight: '600' } }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── History Table ──────────────────────────────────────────
+    function populateHistoryTable(records) {
+        const tbody = document.getElementById('historyTableBody');
+        // Show latest first in table
+        const reversed = [...records].reverse();
+        tbody.innerHTML = reversed.map((r, i) => `
+            <tr>
+                <td style="color:#94a3b8; font-size:.78rem;">${i + 1}</td>
+                <td style="font-size:.8rem;">${formatTimestamp(r.time_stamp)}</td>
+                <td><span class="vd-pill vd-pill-glu">${r.glucose?.toFixed(1) ?? '—'} mg/dL</span></td>
+                <td><span class="vd-pill vd-pill-hr">${r.heart_rate?.toFixed(1) ?? '—'} bpm</span></td>
+            </tr>
+        `).join('');
+    }
+
+    // ── Tab Switching ─────────────────────────────────────────
+    window.switchHistoryView = function(view, btn) {
+        document.querySelectorAll('.vd-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('historyChartView').style.display = view === 'chart' ? 'block' : 'none';
+        document.getElementById('historyTableView').style.display = view === 'table' ? 'block' : 'none';
+    };
+
+    // ── Predictions ───────────────────────────────────────────
+    window.fetchPredictions = async function() {
+        if (!PATIENT_ID) {
+            showAlert('No patient ID linked.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('predictBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Predicting…';
+        document.getElementById('predSpinner').classList.add('show');
+        document.getElementById('predEmpty').style.display = 'none';
+
+        try {
+            const res  = await fetch('{% url "api_vitals_predict" %}');
+            const data = await res.json();
+
+            document.getElementById('predSpinner').classList.remove('show');
+
+            if (data.error) {
+                showAlert(data.error, 'warning');
+                document.getElementById('predEmpty').style.display   = 'flex';
+                document.getElementById('predEmpty').querySelector('p').innerHTML =
+                    '<i class="fas fa-exclamation-circle" style="color:#ef4444;font-size:2.5rem;margin-bottom:10px;"></i><br>' + data.error;
+                // Update API status
+                document.getElementById('statAPI').textContent = 'Offline';
+                document.getElementById('statAPI').style.color = '#ef4444';
+                return;
+            }
+
+            const preds = data.predictions || [];
+            if (preds.length === 0) {
+                showAlert('No predictions returned by the model.', 'info');
+                return;
+            }
+
+            // Update API status
+            document.getElementById('statAPI').textContent = 'Online';
+            document.getElementById('statAPI').style.color = '#16a34a';
+
+            renderPredChart(preds);
+            renderPredCards(preds);
+            showAlert('60-minute forecast generated successfully!', 'success');
+
+        } catch (err) {
+            document.getElementById('predSpinner').classList.remove('show');
+            showAlert('Network error: ' + err.message, 'danger');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Get Forecast';
+        }
+    };
+
+    function renderPredChart(predictions) {
+        const labels = predictions.map(p => `+${p.minutes_ahead} min`);
+        const glu    = predictions.map(p => +(p.predicted_glucose).toFixed(1));
+        const hr     = predictions.map(p => +(p.predicted_heart_rate).toFixed(1));
+
+        const canvas = document.getElementById('predChart');
+        canvas.style.display = 'block';
+        document.getElementById('predLegend').style.display = 'flex';
+        document.getElementById('predEmpty').style.display   = 'none';
+
+        if (predChart) predChart.destroy();
+
+        predChart = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Predicted Glucose',
+                        data: glu,
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249,115,22,.12)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#f97316',
+                        pointRadius: 5, pointHoverRadius: 7,
+                        tension: 0.4, fill: true,
+                        yAxisID: 'yGlu',
+                    },
+                    {
+                        label: 'Predicted Heart Rate',
+                        data: hr,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,.08)',
+                        borderWidth: 2.5,
+                        pointBackgroundColor: '#3b82f6',
+                        pointRadius: 5, pointHoverRadius: 7,
+                        tension: 0.4, fill: true,
+                        yAxisID: 'yHR',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: { duration: 1000, easing: 'easeInOutQuart' },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15,23,42,.92)',
+                        titleColor: '#e2e8f0', bodyColor: '#e2e8f0',
+                        padding: 12, cornerRadius: 10,
+                        callbacks: {
+                            label: ctx => {
+                                const u = ctx.datasetIndex === 0 ? ' mg/dL' : ' bpm';
+                                return `  ${ctx.dataset.label}: ${ctx.parsed.y}${u}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(0,0,0,.05)' },
+                        ticks: { font: { size: 11 }, color: '#64748b' }
+                    },
+                    yGlu: {
+                        type: 'linear', position: 'left',
+                        grid: { color: 'rgba(249,115,22,.08)' },
+                        ticks: { color: '#c2410c', font: { size: 11 }, callback: v => v + '' },
+                        title: { display: true, text: 'Glucose (mg/dL)', color: '#c2410c', font: { size: 11, weight: '600' } }
+                    },
+                    yHR: {
+                        type: 'linear', position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#1d4ed8', font: { size: 11 }, callback: v => v + '' },
+                        title: { display: true, text: 'Heart Rate (bpm)', color: '#1d4ed8', font: { size: 11, weight: '600' } }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderPredCards(predictions) {
+        const section = document.getElementById('predCardsSection');
+        const grid    = document.getElementById('predCards');
+        section.style.display = 'block';
+
+        grid.innerHTML = predictions.map(p => `
+            <div class="vd-pred-card">
+                <div class="vd-pred-step">+${p.minutes_ahead} min</div>
+                <div class="vd-pred-val" style="color:#c2410c;">${p.predicted_glucose.toFixed(1)}</div>
+                <div class="vd-pred-unit">mg/dL glucose</div>
+                <div class="vd-pred-val" style="color:#1d4ed8; font-size:1.1rem; margin-top:6px;">${p.predicted_heart_rate.toFixed(1)}</div>
+                <div class="vd-pred-unit">bpm heart rate</div>
+            </div>
+        `).join('');
+    }
+
+    // ── Init ──────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', loadHistory);
+
+})();
+</script>
+{% endblock %}
