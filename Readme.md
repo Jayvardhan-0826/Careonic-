@@ -5,11 +5,13 @@ A healthcare-based application developed as part of a team project, focused on p
 📁 Project Structure
 API/ → Backend logic, ML model, and data processing
 Careonic/ → Frontend / application interface
+
 ⚙️ Features
 Patient vitals prediction using ML model
 Data processing and transfer system
 Backend API integration
 Basic healthcare dashboard interface
+
 🛠️ Tech Stack
 Python
 Machine Learning (LSTM model)
